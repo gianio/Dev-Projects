@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>SnowMapper Pro - Complete Edition</title>
+    <title>SnowMapper</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,192 +17,204 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
         * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box;
+            margin: 0; padding: 0; box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
+        
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'DM Sans', sans-serif;
             overflow: hidden; 
-            background: #f1f5f9;
+            background: #0f0f0f;
+            color: #fff;
             -webkit-user-select: none;
             user-select: none;
-            touch-action: pan-x pan-y;
         }
 
-        /* iOS Safe Area Support */
-        @supports(padding: max(0px)) {
-            .safe-top { padding-top: max(env(safe-area-inset-top), 0px); }
-            .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+        .mono { font-family: 'Space Mono', monospace; }
+
+        /* Smooth animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .scale-in { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Gradient mesh background */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
-        /* Animations */
-        @keyframes popIn { 
-            0% { transform: scale(0.95); opacity: 0; } 
-            100% { transform: scale(1); opacity: 1; } 
-        }
-        .pop-in { animation: popIn 0.2s ease-out forwards; }
-
-        /* Custom Scrollbar */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Instagram-style feed scrollbar */
-        .feed-scrollbar::-webkit-scrollbar { width: 5px; }
-        .feed-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .feed-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .feed-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Smooth momentum scrolling for iOS */
-        .feed-scrollbar {
-            -webkit-overflow-scrolling: touch;
-            overflow-y: scroll;
-        }
-
-        /* Map Markers - Touch optimized */
-        .photo-marker {
-            width: 50px; height: 50px; border-radius: 50%; border: 3px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden; background: white;
-            transition: transform 0.15s ease-out;
-            cursor: pointer;
-        }
-        .photo-marker:active { transform: scale(1.15); }
-
-        .icon-marker {
-            width: 36px; height: 36px; border-radius: 50%; border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 16px; transition: transform 0.15s ease-out;
-            cursor: pointer;
-        }
-        .icon-marker:active { transform: scale(1.15); }
-
-        /* User Location Marker */
-        .user-location-marker {
-            width: 20px; height: 20px; border-radius: 50%;
-            background: #3b82f6; border: 3px solid white;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
-            animation: pulse-user 2s infinite;
-        }
-        @keyframes pulse-user {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3); }
-            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(0,0,0,0.3); }
+        /* Glass morphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        /* Swisstopo Attribution */
-        .leaflet-control-attribution { background: rgba(255, 255, 255, 0.8) !important; padding: 0 5px; font-size: 10px; }
-
-        /* Leaflet Touch Improvements */
-        .leaflet-container {
-            touch-action: pan-x pan-y;
-        }
-        .leaflet-touch .leaflet-control-zoom-in,
-        .leaflet-touch .leaflet-control-zoom-out {
-            font-size: 22px;
-            width: 44px;
-            height: 44px;
-            line-height: 44px;
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Instagram-style Feed Container - Mobile Optimized */
-        .feed-container {
-            position: fixed;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 100vw;
-            max-width: 400px;
-            background: white;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-            z-index: 2500;
-            transform: translateX(-100%);
-            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            display: flex;
-            flex-direction: column;
-            will-change: transform;
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+        .custom-scroll { -webkit-overflow-scrolling: touch; }
+
+        /* Map markers */
+        .marker-dot {
+            width: 16px; height: 16px; border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(255,255,255,0.4);
+            animation: pulse-marker 2s infinite;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .feed-container.open { transform: translateX(0); }
+        .marker-dot:active { transform: scale(1.3); }
         
-        /* Prevent body scroll when feed is open on mobile */
-        body.feed-open {
+        @keyframes pulse-marker {
+            0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(255,255,255,0.4); }
+            50% { box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 8px rgba(255,255,255,0); }
+        }
+
+        .marker-photo {
+            width: 48px; height: 48px; border-radius: 16px;
+            border: 2px solid #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
             overflow: hidden;
-            position: fixed;
-            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+        .marker-photo:active { transform: scale(1.15); }
 
-        /* Feed Toggle Button - Mobile Optimized */
-        .feed-toggle {
+        /* Bottom sheet */
+        .bottom-sheet {
             position: fixed;
+            bottom: 0;
             left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 2400;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            touch-action: manipulation;
+            right: 0;
+            background: #1a1a1a;
+            border-radius: 32px 32px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 85vh;
+            z-index: 3000;
         }
-        .feed-toggle.shifted { 
-            left: 100vw;
-            transform: translate(-100%, -50%);
-        }
-        
-        @media (min-width: 400px) {
-            .feed-toggle.shifted { 
-                left: 400px;
-                transform: translateY(-50%);
-            }
-        }
+        .bottom-sheet.open { transform: translateY(0); }
 
-        /* Touch-friendly buttons */
-        button, .clickable {
-            min-height: 44px;
-            min-width: 44px;
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
-        }
-
-        /* Improve tap targets for mobile */
-        @media (max-width: 768px) {
-            .filter-chip {
-                min-height: 40px;
-                padding: 0.5rem 0.75rem;
-            }
-        }
-
-        /* Swipe indicator for feed */
-        .swipe-indicator {
-            position: absolute;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
+        /* Pill handle */
+        .sheet-handle {
             width: 40px;
             height: 5px;
-            background: #cbd5e1;
+            background: rgba(255,255,255,0.2);
             border-radius: 3px;
-            z-index: 10;
+            margin: 12px auto 20px;
         }
 
-        /* Overlay to catch touches when feed is open */
+        /* Category cards */
+        .category-card {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .category-card:active { transform: scale(0.95); }
+        .category-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .category-card.selected::before { opacity: 1; }
+
+        /* Floating action button */
+        .fab {
+            position: fixed;
+            right: 20px;
+            bottom: 32px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .fab:active { transform: scale(0.9); }
+
+        /* Feed overlay */
         .feed-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: 2400;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s;
+            z-index: 2900;
         }
-        .feed-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .feed-overlay.visible { opacity: 1; pointer-events: auto; }
 
-        /* Prevent double-tap zoom */
-        * {
-            touch-action: manipulation;
+        /* Chip styles */
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1.5px solid transparent;
+        }
+        .chip:active { transform: scale(0.95); }
+
+        /* Leaflet overrides */
+        .leaflet-container { background: #0a0a0a; }
+        .leaflet-control-zoom { border: none !important; }
+        .leaflet-control-zoom a {
+            background: rgba(255,255,255,0.1) !important;
+            backdrop-filter: blur(10px);
+            color: white !important;
+            border: none !important;
+            width: 48px !important;
+            height: 48px !important;
+            line-height: 48px !important;
+            font-size: 20px !important;
+        }
+        .leaflet-control-attribution { display: none; }
+
+        /* Status bar safe area */
+        @supports(padding: max(0px)) {
+            .safe-top { padding-top: max(env(safe-area-inset-top), 0px); }
+            .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
         }
     </style>
 </head>
@@ -212,195 +224,171 @@
     <script type="text/babel">
         const { useState, useRef, useEffect, useMemo } = React;
 
-        // ==================== 1. CONFIGURATION ====================
+        // ==================== CONFIG ====================
 
-        const DATE_FILTERS = { ALL: 'all', YESTERDAY: 'yesterday', THIS_WEEK: 'this_week', LAST_WEEK: 'last_week' };
-
-        // Categories (A, B, C, D)
-        const SNOW_AMOUNT = {
-            id: 'A', label: 'Snow Amount', icon: 'fa-layer-group', colorClass: 'blue',
-            options: [
-                { value: 'sharks', label: 'Visible Sharks', icon: 'fa-mountain' },
-                { value: 'low_coverage', label: 'Low Coverage', icon: 'fa-minus' },
-                { value: 'good_coverage', label: 'Good Coverage', icon: 'fa-check' },
-                { value: 'deep', label: 'Deep', icon: 'fa-arrow-down' }
-            ]
+        const CATEGORIES = {
+            snow_amount: { 
+                id: 'snow_amount',
+                label: 'Snow Amount', 
+                icon: 'fa-layer-group',
+                color: '#3b82f6',
+                gradient: 'from-blue-500 to-cyan-500',
+                options: [
+                    { value: 'sharks', label: 'Visible Sharks' },
+                    { value: 'low_coverage', label: 'Low Coverage' },
+                    { value: 'good_coverage', label: 'Good Coverage' },
+                    { value: 'deep', label: 'Deep' }
+                ]
+            },
+            snow_type: {
+                id: 'snow_type',
+                label: 'Snow Type',
+                icon: 'fa-snowflake',
+                color: '#8b5cf6',
+                gradient: 'from-purple-500 to-pink-500',
+                options: [
+                    { value: 'powder', label: 'Powder' },
+                    { value: 'wind_crust', label: 'Wind Crust' },
+                    { value: 'sun_crust', label: 'Sun Crust' },
+                    { value: 'wet_heavy', label: 'Wet / Heavy' },
+                    { value: 'ice', label: 'Ice' }
+                ]
+            },
+            hazards: {
+                id: 'hazards',
+                label: 'Hazards',
+                icon: 'fa-triangle-exclamation',
+                color: '#ef4444',
+                gradient: 'from-red-500 to-orange-500',
+                options: [
+                    { value: 'slab', label: 'Slab Avalanche' },
+                    { value: 'loose', label: 'Loose Wet' },
+                    { value: 'glide', label: 'Glide Crack' },
+                    { value: 'whumpf', label: 'Whumpf Sound' }
+                ],
+                sizes: ['Small', 'Medium', 'Large'],
+                triggers: ['Natural', 'Skier', 'Remote']
+            },
+            people: {
+                id: 'people',
+                label: 'People & Tracks',
+                icon: 'fa-users',
+                color: '#a855f7',
+                gradient: 'from-purple-500 to-indigo-500'
+            }
         };
-
-        const SNOW_TYPE = {
-            id: 'B', label: 'Snow Type', icon: 'fa-snowflake', colorClass: 'indigo',
-            options: [
-                { value: 'powder', label: 'Powder' },
-                { value: 'wind_crust', label: 'Wind Crust' },
-                { value: 'sun_crust', label: 'Sun Crust' },
-                { value: 'wet_heavy', label: 'Wet / Heavy' },
-                { value: 'ice', label: 'Ice' }
-            ]
-        };
-
-        const HAZARD_ALERTS = {
-            id: 'C', label: 'Hazards', icon: 'fa-triangle-exclamation', colorClass: 'red',
-            options: [
-                { value: 'slab', label: 'Slab Avalanche' },
-                { value: 'loose', label: 'Loose Wet' },
-                { value: 'glide', label: 'Glide Crack' },
-                { value: 'whumpf', label: 'Whumpf Sound' }
-            ],
-            sizes: ['Small', 'Medium', 'Large', 'Extreme'],
-            triggers: ['Natural', 'Skier', 'Remote']
-        };
-
-        const PEOPLE_TRACKS = { id: 'D', label: 'People', icon: 'fa-users', colorClass: 'purple' };
-
-        const CATEGORIES = [SNOW_AMOUNT, SNOW_TYPE, HAZARD_ALERTS, PEOPLE_TRACKS];
-
-        // Demo data
-        const TITLES = [ "Rothorn Descent", "Gemsstock North", "Titlis Morning", "Disentis Couloir", "Davos Trees", "Verbier Backside", "Furka Pass", "Hidden Valley", "Müstair Tour", "San Bernardino" ];
-        const DESCRIPTIONS = [ "Snow was okay, a lot of other people and I was super exhausted.", "Absolutely bombproof stability today. Great lines, but getting tracked out fast.", "Watch out for sharks at the bottom, pretty thin cover below 2000m.", "Wind affected at the ridge, but soft powder in the bowls.", "Heavy wet snow by noon, get out early! Temperatures rising fast." ];
-        
-        // --- FRIEND CONFIG ---
-        const FRIENDS = ['alpine_explorer', 'powder_hunter', 'ski_sarah', 'freeride_fred'];
-        
-        const USERNAMES = [ 'alpine_explorer', 'powder_hunter', 'mountain_mike', 'ski_sarah', 'freeride_fred', 'backcountry_betty', 'peak_pete', 'summit_sam', 'glacier_girl', 'ridge_runner', 'snow_seeker', 'trail_blazer' ];
-        const AVATARS = [ 'https://i.pravatar.cc/150?img=68', 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=12', 'https://i.pravatar.cc/150?img=33', 'https://i.pravatar.cc/150?img=7', 'https://i.pravatar.cc/150?img=22', 'https://i.pravatar.cc/150?img=45', 'https://i.pravatar.cc/150?img=64' ];
-        const SNOW_IMGS = [ 'https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=600', 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=600', 'https://images.unsplash.com/photo-1548777123-e216912df7d8?w=600', 'https://images.unsplash.com/photo-1520625981442-20c2d3a9856f?w=600', 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=600', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600', 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=600', 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600' ];
 
         const SWISS_REGIONS = [
-            { name: 'Valais', lat: 46.2, lng: 7.6, spread: 0.4 },
-            { name: 'Bern', lat: 46.6, lng: 7.9, spread: 0.3 },
-            { name: 'Uri', lat: 46.7, lng: 8.6, spread: 0.25 },
-            { name: 'Graubünden', lat: 46.6, lng: 9.5, spread: 0.5 },
-            { name: 'Central', lat: 46.9, lng: 8.4, spread: 0.25 }
+            { lat: 46.2, lng: 7.6, spread: 0.4 },
+            { lat: 46.6, lng: 7.9, spread: 0.3 },
+            { lat: 46.7, lng: 8.6, spread: 0.25 },
+            { lat: 46.6, lng: 9.5, spread: 0.5 },
+            { lat: 46.9, lng: 8.4, spread: 0.25 }
         ];
 
-        // ==================== 2. DATA GENERATOR ====================
-        const generateDemoReports = (count) => {
+        const FRIENDS = ['alpine_explorer', 'powder_hunter', 'ski_sarah'];
+        const USERNAMES = ['alpine_explorer', 'powder_hunter', 'ski_sarah', 'mountain_mike', 'freeride_fred', 'peak_pete'];
+        const AVATARS = ['https://i.pravatar.cc/150?img=68', 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=12', 'https://i.pravatar.cc/150?img=33'];
+        const SNOW_IMGS = [
+            'https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=600',
+            'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=600',
+            'https://images.unsplash.com/photo-1548777123-e216912df7d8?w=600',
+            'https://images.unsplash.com/photo-1520625981442-20c2d3a9856f?w=600'
+        ];
+        const TITLES = ["Matterhorn North", "Verbier Powder", "Andermatt Bowl", "Zermatt Couloir", "Saas-Fee Glacier"];
+        const DESCRIPTIONS = ["Epic powder day!", "Watch for sharks below 2000m", "Perfect conditions", "Wind affected at ridge", "Heavy wet snow by noon"];
+
+        // Generate demo data
+        const generateReports = (count) => {
             const reports = [];
             const today = Date.now();
             for (let i = 0; i < count; i++) {
-                const daysAgo = Math.floor(Math.random() * 20);
-                const timestamp = today - (daysAgo * 86400000);
                 const region = SWISS_REGIONS[Math.floor(Math.random() * SWISS_REGIONS.length)];
-                const lat = region.lat + (Math.random() - 0.5) * region.spread;
-                const lng = region.lng + (Math.random() - 0.5) * region.spread;
-
-                const catKeys = ['A', 'B', 'C', 'D'];
-                const mainCat = catKeys[Math.floor(Math.random() * catKeys.length)];
-                const categories = { A: null, B: null, C: null, D: null };
-
-                if (mainCat === 'A') {
-                    const opt = SNOW_AMOUNT.options[Math.floor(Math.random() * SNOW_AMOUNT.options.length)];
-                    categories.A = { value: opt.value, label: opt.label };
-                } else if (mainCat === 'B') {
-                    const opt = SNOW_TYPE.options[Math.floor(Math.random() * SNOW_TYPE.options.length)];
-                    categories.B = { value: opt.value, label: opt.label, depth: Math.floor(Math.random() * 150) + 10 };
-                } else if (mainCat === 'C') {
-                    const opt = HAZARD_ALERTS.options[Math.floor(Math.random() * HAZARD_ALERTS.options.length)];
-                    categories.C = { type: opt.value, label: opt.label, size: HAZARD_ALERTS.sizes[Math.floor(Math.random()*4)], trigger: HAZARD_ALERTS.triggers[Math.floor(Math.random()*3)] };
-                } else if (mainCat === 'D') {
-                    categories.D = Math.floor(Math.random() * 50) + 1;
-                }
-
                 const username = USERNAMES[i % USERNAMES.length];
+                const categoryId = Object.keys(CATEGORIES)[Math.floor(Math.random() * 4)];
+                
                 reports.push({
                     id: i,
                     name: TITLES[i % TITLES.length],
                     description: DESCRIPTIONS[i % DESCRIPTIONS.length],
-                    lat, lng, timestamp, date: new Date(timestamp).toLocaleDateString(),
+                    lat: region.lat + (Math.random() - 0.5) * region.spread,
+                    lng: region.lng + (Math.random() - 0.5) * region.spread,
+                    timestamp: today - (Math.floor(Math.random() * 20) * 86400000),
                     photo: SNOW_IMGS[i % SNOW_IMGS.length],
+                    categoryId,
                     user: {
                         name: username,
                         avatar: AVATARS[i % AVATARS.length],
-                        level: 'Pro',
                         isFriend: FRIENDS.includes(username)
-                    },
-                    mainCategory: mainCat,
-                    categories: categories
+                    }
                 });
             }
-            return reports.sort((a,b) => b.timestamp - a.timestamp);
+            return reports.sort((a, b) => b.timestamp - a.timestamp);
         };
 
-        const DEMO_DATA = generateDemoReports(200);
+        const DEMO_DATA = generateReports(100);
 
-        // ==================== 3. HELPERS ====================
-        const checkDateFilter = (ts, filter) => {
-            const diff = (Date.now() - ts) / (1000 * 3600 * 24);
-            if (filter === DATE_FILTERS.YESTERDAY) return diff <= 1;
-            if (filter === DATE_FILTERS.THIS_WEEK) return diff <= 7;
-            if (filter === DATE_FILTERS.LAST_WEEK) return diff <= 14;
-            return true;
-        };
-
+        // ==================== HELPERS ====================
+        
         const calculateDistance = (lat1, lng1, lat2, lng2) => {
-            if(!lat1 || !lat2) return null;
-            const R = 6371; 
+            if (!lat1 || !lat2) return null;
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         };
 
-        // ==================== 4. COMPONENTS ====================
+        // ==================== COMPONENTS ====================
 
-        // Insta Feed Card
-        const FeedCard = ({ report, onSelect, userLocation }) => {
-            const mc = report.mainCategory;
-            let badgeColor = 'bg-gray-500', badgeIcon = 'fa-circle';
-            if(mc === 'A') { badgeColor = 'bg-blue-600'; badgeIcon = 'fa-layer-group'; }
-            if(mc === 'B') { badgeColor = 'bg-indigo-600'; badgeIcon = 'fa-snowflake'; }
-            if(mc === 'C') { badgeColor = 'bg-red-600'; badgeIcon = 'fa-triangle-exclamation'; }
-            if(mc === 'D') { badgeColor = 'bg-purple-600'; badgeIcon = 'fa-users'; }
-
+        const FeedCard = ({ report, onClick, userLocation }) => {
+            const category = CATEGORIES[report.categoryId];
             const distance = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
+            const daysAgo = Math.floor((Date.now() - report.timestamp) / 86400000);
 
             return (
-                <div className="bg-white border-b border-gray-100 mb-2">
-                    {/* Header */}
-                    <div className="px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-[2px] rounded-full ${report.user.isFriend ? 'bg-gradient-to-tr from-yellow-400 to-pink-600' : 'bg-gray-200'}`}>
-                                <img src={report.user.avatar} className="w-8 h-8 rounded-full border-2 border-white" />
+                <div onClick={onClick} className="mb-4 cursor-pointer active:scale-98 transition-transform">
+                    <div className="glass-dark rounded-3xl overflow-hidden">
+                        {/* User header */}
+                        <div className="p-4 flex items-center gap-3">
+                            <div className={`p-[2px] rounded-full ${report.user.isFriend ? 'bg-gradient-to-tr from-yellow-400 to-pink-500' : 'bg-gray-700'}`}>
+                                <img src={report.user.avatar} className="w-10 h-10 rounded-full border-2 border-black" />
                             </div>
-                            <div className="leading-tight">
-                                <div className="font-bold text-sm text-gray-900 flex items-center gap-1">
+                            <div className="flex-1 min-w-0">
+                                <div className="font-bold text-sm flex items-center gap-1.5">
                                     {report.user.name}
-                                    {report.user.isFriend && <i className="fas fa-star text-[10px] text-yellow-500" title="Friend"></i>}
+                                    {report.user.isFriend && <i className="fas fa-star text-xs text-yellow-400"></i>}
                                 </div>
-                                <div className="text-[10px] text-gray-500">
-                                    {distance ? <span>{distance < 1 ? `${Math.round(distance*1000)}m` : `${distance.toFixed(1)}km`} • </span> : ''}
-                                    {report.date}
+                                <div className="text-xs text-gray-400 mono">
+                                    {distance && `${distance < 1 ? Math.round(distance*1000)+'m' : distance.toFixed(1)+'km'} • `}
+                                    {daysAgo === 0 ? 'Today' : `${daysAgo}d ago`}
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Image */}
-                    <div className="relative bg-gray-100 aspect-square group cursor-pointer active:opacity-90" onClick={() => onSelect(report)}>
-                        <img src={report.photo} className="w-full h-full object-cover" />
-                        <div className={`absolute top-3 right-3 ${badgeColor} text-white px-2 py-1 rounded-full text-xs font-bold shadow-sm`}>
-                            <i className={`fas ${badgeIcon} mr-1`}></i>{mc}
+                        {/* Photo */}
+                        <div className="relative aspect-square bg-black">
+                            <img src={report.photo} className="w-full h-full object-cover" />
+                            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full glass text-xs font-bold flex items-center gap-1.5">
+                                <i className={`fas ${category.icon}`} style={{ color: category.color }}></i>
+                                {category.label}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Actions */}
-                    <div className="px-4 py-3">
-                        <div className="flex items-center gap-4 mb-2 text-2xl text-gray-800">
-                            <i className="far fa-heart active:text-red-500 cursor-pointer"></i>
-                            <i className="far fa-comment active:text-blue-500 cursor-pointer"></i>
-                            <i className="far fa-paper-plane active:text-gray-600 cursor-pointer"></i>
+                        {/* Content */}
+                        <div className="p-4">
+                            <div className="font-bold text-base mb-1">{report.name}</div>
+                            <div className="text-sm text-gray-300">{report.description}</div>
                         </div>
-                        <div className="text-sm"><span className="font-bold mr-2">{report.user.name}</span>{report.description}</div>
                     </div>
                 </div>
             );
         };
 
-        // Upload Modal
         const UploadModal = ({ onClose, onSubmit }) => {
-            const [cat, setCat] = useState(null);
             const [photo, setPhoto] = useState(null);
-            const [form, setForm] = useState({ title: '', description: '', typeVal: '', depth: 50, size: 'Small', count: 5 });
+            const [selectedCategory, setSelectedCategory] = useState(null);
+            const [form, setForm] = useState({ title: '', description: '', details: '' });
 
             const handleFile = (e) => {
                 const file = e.target.files[0];
@@ -412,368 +400,334 @@
             };
 
             const handleSubmit = () => {
-                if(!cat || !photo || !form.title) return;
-                const categories = { A: null, B: null, C: null, D: null };
-                if(cat === 'A') categories.A = { value: form.typeVal, label: SNOW_AMOUNT.options.find(o=>o.value === form.typeVal)?.label || 'Good Coverage' };
-                if(cat === 'B') categories.B = { value: form.typeVal, label: SNOW_TYPE.options.find(o=>o.value === form.typeVal)?.label || 'Powder', depth: form.depth };
-                if(cat === 'C') categories.C = { type: form.typeVal, label: HAZARD_ALERTS.options.find(o=>o.value === form.typeVal)?.label || 'Avalanche', size: form.size, trigger: 'Skier' };
-                if(cat === 'D') categories.D = parseInt(form.count);
-
+                if (!photo || !selectedCategory || !form.title) return;
                 onSubmit({
-                    name: form.title, description: form.description || "No description provided.",
-                    mainCategory: cat, categories, photo,
-                    user: { name: 'You', avatar: 'https://i.pravatar.cc/150?img=68', level: 'New', isFriend: false }
+                    name: form.title,
+                    description: form.description || "No description",
+                    categoryId: selectedCategory,
+                    photo,
+                    user: { name: 'You', avatar: AVATARS[0], isFriend: false }
                 });
                 onClose();
             };
 
             return (
-                <div className="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-md rounded-2xl max-h-[90vh] flex flex-col overflow-hidden pop-in">
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
-                            <h3 className="font-bold text-gray-800">New Report</h3>
-                            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center"><i className="fas fa-times"></i></button>
+                <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+                    <div className="feed-overlay visible"></div>
+                    <div className="relative bg-gradient-to-br from-gray-900 to-black w-full sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl scale-in" 
+                         style={{ maxHeight: '90vh', borderRadius: '32px 32px 0 0' }}
+                         onClick={e => e.stopPropagation()}>
+                        
+                        {/* Header */}
+                        <div className="gradient-bg p-6 relative">
+                            <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 glass rounded-full flex items-center justify-center">
+                                <i className="fas fa-times text-lg"></i>
+                            </button>
+                            <h2 className="text-2xl font-bold">New Report</h2>
+                            <p className="text-sm text-white/80 mt-1">Share snow conditions</p>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {!photo ? (
-                                <div onClick={()=>document.getElementById('u').click()} className="h-32 bg-gray-50 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer active:bg-blue-50 active:border-blue-400 transition">
-                                    <div className="text-center text-gray-400"><i className="fas fa-camera text-2xl mb-2"></i><div className="text-xs font-bold">Upload Photo</div></div>
-                                    <input id="u" type="file" className="hidden" accept="image/*" onChange={handleFile}/>
+
+                        <div className="overflow-y-auto custom-scroll" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+                            <div className="p-6 space-y-6">
+                                {/* Photo upload */}
+                                {!photo ? (
+                                    <div onClick={() => document.getElementById('photo-upload').click()} 
+                                         className="aspect-video glass-dark rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer active:scale-98 transition">
+                                        <i className="fas fa-camera text-4xl mb-3 text-white/40"></i>
+                                        <p className="text-sm font-medium text-white/60">Tap to add photo</p>
+                                        <input id="photo-upload" type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                                    </div>
+                                ) : (
+                                    <div className="relative aspect-video rounded-2xl overflow-hidden">
+                                        <img src={photo} className="w-full h-full object-cover" />
+                                        <button onClick={() => setPhoto(null)} 
+                                                className="absolute top-3 right-3 w-10 h-10 bg-black/60 backdrop-blur rounded-full flex items-center justify-center">
+                                            <i className="fas fa-trash text-sm"></i>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Title */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Title *</label>
+                                    <input 
+                                        type="text"
+                                        value={form.title}
+                                        onChange={e => setForm({...form, title: e.target.value})}
+                                        placeholder="e.g., Epic powder at Matterhorn"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
+                                    />
                                 </div>
-                            ) : (
-                                <img src={photo} className="w-full h-48 object-cover rounded-xl" />
-                            )}
-                            <input type="text" className="w-full p-3 border rounded-lg font-bold" placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
-                            <textarea className="w-full p-3 border rounded-lg text-sm h-20" placeholder="Description..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}></textarea>
-                            <div className="grid grid-cols-4 gap-2">
-                                {CATEGORIES.map(c => (
-                                    <button key={c.id} onClick={()=>setCat(c.id)} className={`flex flex-col items-center p-3 rounded-lg border transition active:scale-95 ${cat===c.id ? `bg-${c.colorClass}-50 border-${c.colorClass}-500` : 'border-gray-200'}`}>
-                                        <i className={`fas ${c.icon} text-lg mb-1`}></i><span className="text-[10px] font-bold">{c.id}</span>
-                                    </button>
-                                ))}
+
+                                {/* Description */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
+                                    <textarea 
+                                        value={form.description}
+                                        onChange={e => setForm({...form, description: e.target.value})}
+                                        placeholder="Share details about conditions..."
+                                        rows="3"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition resize-none"
+                                    />
+                                </div>
+
+                                {/* Category selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-3">Category *</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {Object.values(CATEGORIES).map(cat => (
+                                            <div key={cat.id}
+                                                 onClick={() => setSelectedCategory(cat.id)}
+                                                 className={`category-card p-4 rounded-2xl cursor-pointer border-2 transition ${
+                                                     selectedCategory === cat.id 
+                                                         ? 'border-white/30 glass' 
+                                                         : 'border-white/10 glass-dark'
+                                                 }`}>
+                                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cat.gradient} flex items-center justify-center mb-3`}>
+                                                    <i className={`fas ${cat.icon} text-xl`}></i>
+                                                </div>
+                                                <div className="font-bold text-sm">{cat.label}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Category-specific fields */}
+                                {selectedCategory && CATEGORIES[selectedCategory].options && (
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-gray-400">Type</label>
+                                        <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30">
+                                            <option value="">Select type...</option>
+                                            {CATEGORIES[selectedCategory].options.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
-                            {cat && (cat === 'A' || cat === 'B' || cat === 'C') && (
-                                <select className="w-full p-3 border rounded-lg" value={form.typeVal} onChange={e=>setForm({...form, typeVal: e.target.value})}>
-                                    <option value="">Select Type...</option>
-                                    {(cat==='A'?SNOW_AMOUNT:cat==='B'?SNOW_TYPE:HAZARD_ALERTS).options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                                </select>
-                            )}
                         </div>
-                        <div className="p-4 border-t shrink-0">
-                            <button onClick={handleSubmit} disabled={!cat || !photo || !form.title} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold disabled:opacity-50 active:scale-95 transition">Publish</button>
+
+                        {/* Submit */}
+                        <div className="p-6 border-t border-white/10">
+                            <button onClick={handleSubmit} 
+                                    disabled={!photo || !selectedCategory || !form.title}
+                                    className="w-full gradient-bg py-4 rounded-2xl font-bold text-lg disabled:opacity-50 active:scale-98 transition shadow-xl">
+                                Publish Report
+                            </button>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // Report Detail Popup
-        const ReportPopup = ({ report, onClose, userLocation }) => {
-            const mc = report.mainCategory;
-            const c = report.categories;
-            const distance = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
-
-            return (
-                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
-                    <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl pop-in relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <button onClick={onClose} className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 text-white rounded-full hover:bg-black/70 active:scale-95 flex items-center justify-center transition"><i className="fas fa-times"></i></button>
-
-                        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                            <div className="md:w-3/5 h-64 md:h-auto relative bg-black shrink-0">
-                                <img src={report.photo} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="md:w-2/5 p-6 overflow-y-auto flex flex-col">
-                                <h2 className="text-xl font-bold text-gray-800">{report.name}</h2>
-                                <div className="text-sm text-gray-500 flex items-center gap-3 mt-2 mb-3">
-                                    <span>{report.date}</span>
-                                    {distance && <span><i className="fas fa-location-dot mr-1"></i>{distance < 1 ? `${Math.round(distance*1000)}m` : `${distance.toFixed(1)}km`}</span>}
-                                </div>
-                                <p className="text-sm text-gray-700 italic border-l-2 pl-3 border-gray-200 mb-4">"{report.description}"</p>
-                                
-                                <div className="flex-1 space-y-3">
-                                    {mc === 'A' && c.A && <div className="p-3 bg-blue-50 rounded border border-blue-100"><div className="text-xs text-blue-500 font-bold">Coverage</div><div className="font-bold text-blue-900">{c.A.label}</div></div>}
-                                    {mc === 'B' && c.B && <div className="p-3 bg-indigo-50 rounded border border-indigo-100"><div className="text-xs text-indigo-500 font-bold">Snow Type</div><div className="font-bold text-indigo-900">{c.B.label} ({c.B.depth}cm)</div></div>}
-                                    {mc === 'C' && c.C && <div className="p-3 bg-red-50 rounded border border-red-100"><div className="text-xs text-red-500 font-bold">Hazard</div><div className="font-bold text-red-900">{c.C.label}</div><div className="text-xs mt-1">Size: {c.C.size} | Trig: {c.C.trigger}</div></div>}
-                                    {mc === 'D' && c.D && <div className="p-3 bg-purple-50 rounded border border-purple-100 text-center"><div className="text-3xl font-black text-purple-600">{c.D}</div><div className="text-xs font-bold text-purple-400">People</div></div>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // ==================== 5. MAIN APP ====================
+        // ==================== MAIN APP ====================
 
         function App() {
             const [reports, setReports] = useState(DEMO_DATA);
-            const [activeCat, setActiveCat] = useState(null); 
-            const [timeFilter, setTimeFilter] = useState(DATE_FILTERS.ALL);
-            const [subFilters, setSubFilters] = useState({}); 
-            
-            // New States
-            const [friendsOnly, setFriendsOnly] = useState(false);
-            const [showSlopeLayer, setShowSlopeLayer] = useState(false);
-
-            const [selectedReport, setSelectedReport] = useState(null);
-            const [showUpload, setShowUpload] = useState(false);
             const [showFeed, setShowFeed] = useState(false);
-            const [zoom, setZoom] = useState(9);
+            const [showUpload, setShowUpload] = useState(false);
+            const [selectedReport, setSelectedReport] = useState(null);
+            const [friendsOnly, setFriendsOnly] = useState(false);
+            const [selectedCategory, setSelectedCategory] = useState(null);
             const [userLocation, setUserLocation] = useState(null);
-            const [locationEnabled, setLocationEnabled] = useState(false);
+            const [zoom, setZoom] = useState(9);
 
             const mapRef = useRef(null);
             const mapInstance = useRef(null);
             const markersRef = useRef([]);
-            const heatLayerRef = useRef(null);
-            const slopeLayerRef = useRef(null);
             const userMarkerRef = useRef(null);
-
-            // Manage body scroll lock
-            useEffect(() => {
-                if (showFeed) {
-                    document.body.classList.add('feed-open');
-                } else {
-                    document.body.classList.remove('feed-open');
-                }
-                return () => document.body.classList.remove('feed-open');
-            }, [showFeed]);
-
-            // Location
-            const enableLocation = () => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition((pos) => {
-                        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                        setUserLocation(loc);
-                        setLocationEnabled(true);
-                        if (mapInstance.current) {
-                            mapInstance.current.flyTo([loc.lat, loc.lng], 12, { duration: 1.5 });
-                            if (userMarkerRef.current) userMarkerRef.current.remove();
-                            const userIcon = L.divIcon({ className: 'custom', html: '<div class="user-location-marker"></div>', iconSize: [20, 20] });
-                            userMarkerRef.current = L.marker([loc.lat, loc.lng], { icon: userIcon }).addTo(mapInstance.current);
-                        }
-                    }, () => alert('Location access denied'));
-                }
-            };
 
             const filteredReports = useMemo(() => {
                 let filtered = reports.filter(r => {
-                    if(!checkDateFilter(r.timestamp, timeFilter)) return false;
-                    if(friendsOnly && !r.user.isFriend) return false;
-                    if(activeCat && r.mainCategory !== activeCat) return false;
-                    if(activeCat && subFilters[activeCat]) {
-                        if(activeCat === 'A' && r.categories.A?.value !== subFilters[activeCat]) return false;
-                        if(activeCat === 'B' && r.categories.B?.value !== subFilters[activeCat]) return false;
-                        if(activeCat === 'C' && r.categories.C?.type !== subFilters[activeCat]) return false;
-                    }
+                    if (friendsOnly && !r.user.isFriend) return false;
+                    if (selectedCategory && r.categoryId !== selectedCategory) return false;
                     return true;
                 });
-                
                 if (userLocation) {
-                    filtered = filtered.map(r => ({ ...r, distance: calculateDistance(userLocation.lat, userLocation.lng, r.lat, r.lng) })).sort((a, b) => a.distance - b.distance);
+                    filtered = filtered.map(r => ({
+                        ...r,
+                        distance: calculateDistance(userLocation.lat, userLocation.lng, r.lat, r.lng)
+                    })).sort((a, b) => a.distance - b.distance);
                 }
                 return filtered;
-            }, [reports, activeCat, timeFilter, subFilters, friendsOnly, userLocation]);
+            }, [reports, friendsOnly, selectedCategory, userLocation]);
 
-            const handleNewReport = (data) => {
-                const loc = userLocation || { lat: 46.6, lng: 8.6 };
-                const newR = { id: Date.now(), lat: loc.lat, lng: loc.lng, timestamp: Date.now(), date: 'Just Now', ...data };
-                setReports([newR, ...reports]);
-                if(mapInstance.current) mapInstance.current.flyTo([loc.lat, loc.lng], 13);
+            const enableLocation = () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        setUserLocation(loc);
+                        if (mapInstance.current) {
+                            mapInstance.current.flyTo([loc.lat, loc.lng], 12);
+                        }
+                    });
+                }
             };
 
-            // Map Init with touch optimizations
             useEffect(() => {
-                if(!mapInstance.current && mapRef.current) {
-                    const map = L.map(mapRef.current, { 
-                        zoomControl: false,
-                        tap: true,
-                        tapTolerance: 15,
-                        touchZoom: true,
-                        scrollWheelZoom: false,
-                        doubleClickZoom: false
-                    }).setView([46.8, 8.2], 9);
-                    
+                if (!mapInstance.current && mapRef.current) {
+                    const map = L.map(mapRef.current, { zoomControl: false }).setView([46.8, 8.2], 9);
                     L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', {
-                        attribution: '&copy; swisstopo', minZoom: 8, maxZoom: 19
+                        minZoom: 8, maxZoom: 19
                     }).addTo(map);
-                    
                     L.control.zoom({ position: 'bottomright' }).addTo(map);
                     map.on('zoomend', () => setZoom(map.getZoom()));
                     mapInstance.current = map;
                 }
             }, []);
 
-            // Slope Layer
             useEffect(() => {
                 if (!mapInstance.current) return;
-                if (showSlopeLayer) {
-                    if (!slopeLayerRef.current) {
-                        slopeLayerRef.current = L.tileLayer(
-                            'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.hangneigung-ueber_30/default/current/3857/{z}/{x}/{y}.png',
-                            { attribution: '&copy; swisstopo', opacity: 0.5, maxZoom: 17 }
-                        ).addTo(mapInstance.current);
-                    }
-                } else {
-                    if (slopeLayerRef.current) {
-                        slopeLayerRef.current.remove();
-                        slopeLayerRef.current = null;
-                    }
-                }
-            }, [showSlopeLayer]);
-
-            // Markers & Heatmap
-            useEffect(() => {
-                if(!mapInstance.current) return;
-                const map = mapInstance.current;
-
                 markersRef.current.forEach(m => m.remove());
                 markersRef.current = [];
-                if(heatLayerRef.current) { try{ heatLayerRef.current.remove(); }catch(e){} heatLayerRef.current = null; }
 
-                if(filteredReports.length > 50 && zoom < 10) {
-                    const points = filteredReports.map(r => [r.lat, r.lng, 0.6]);
-                    heatLayerRef.current = L.heatLayer(points, { radius: 25, blur: 15, maxZoom: 10 }).addTo(map);
-                } else {
-                    filteredReports.forEach(r => {
-                        const mc = r.mainCategory;
-                        let color='#888', icon='fa-circle';
-                        if(mc==='A'){color='#3b82f6'; icon='fa-layer-group';}
-                        if(mc==='B'){color='#6366f1'; icon='fa-snowflake';}
-                        if(mc==='C'){color='#ef4444'; icon='fa-triangle-exclamation';}
-                        if(mc==='D'){color='#a855f7'; icon='fa-users';}
+                filteredReports.forEach(r => {
+                    const cat = CATEGORIES[r.categoryId];
+                    const isPhoto = zoom >= 12;
+                    const html = isPhoto 
+                        ? `<div class="marker-photo"><img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`
+                        : `<div class="marker-dot" style="background:${cat.color}"></div>`;
 
-                        const isPhoto = zoom >= 13;
-                        const html = isPhoto ?
-                            `<div class="photo-marker" style="border-color:${color}"><img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;"></div>` :
-                            `<div class="icon-marker" style="background:${color}"><i class="fas ${icon}"></i></div>`;
+                    const m = L.marker([r.lat, r.lng], {
+                        icon: L.divIcon({ className: 'custom', html, iconSize: isPhoto ? [48,48] : [16,16] })
+                    }).addTo(mapInstance.current);
 
-                        const m = L.marker([r.lat, r.lng], {
-                            icon: L.divIcon({ className: 'custom', html, iconSize: isPhoto?[50,50]:[36,36], iconAnchor: isPhoto?[25,25]:[18,18] })
-                        }).addTo(map);
-
-                        m.on('click', (e) => {
-                            L.DomEvent.stopPropagation(e);
-                            setSelectedReport(r);
-                            setShowFeed(false);
-                            map.flyTo([r.lat, r.lng], 14, { duration: 1 });
-                        });
-                        markersRef.current.push(m);
+                    m.on('click', () => {
+                        setSelectedReport(r);
+                        setShowFeed(false);
                     });
-                }
+                    markersRef.current.push(m);
+                });
             }, [filteredReports, zoom]);
 
             return (
-                <div className="h-screen flex flex-col">
+                <div className="h-screen flex flex-col bg-black">
                     {/* Header */}
-                    <div className="h-14 md:h-16 bg-white border-b shadow-sm z-[3000] flex items-center justify-between px-3 md:px-4 shrink-0 safe-top">
-                        <div className="font-black text-gray-800 flex items-center gap-2 text-sm md:text-base">
-                            <i className="fas fa-snowflake text-blue-600"></i> SnowMapper
+                    <div className="glass-dark safe-top px-4 py-4 flex items-center justify-between z-[3100]">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 gradient-bg rounded-full flex items-center justify-center">
+                                <i className="fas fa-snowflake text-lg"></i>
+                            </div>
+                            <div className="font-bold text-lg">SnowMapper</div>
                         </div>
-                        <div className="flex gap-2 items-center">
-                             <button onClick={enableLocation} className={`p-2 rounded-lg transition active:scale-95 ${locationEnabled ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                <i className="fas fa-location-crosshairs"></i>
-                             </button>
-                             <select className="bg-gray-100 text-xs font-bold py-2 px-3 rounded-full outline-none" value={timeFilter} onChange={e=>setTimeFilter(e.target.value)}>
-                                <option value={DATE_FILTERS.ALL}>All</option>
-                                <option value={DATE_FILTERS.THIS_WEEK}>7d</option>
-                                <option value={DATE_FILTERS.YESTERDAY}>24h</option>
-                             </select>
-                             <button onClick={() => setShowUpload(true)} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold active:scale-95 transition">
-                                <i className="fas fa-plus mr-1"></i> <span className="hidden sm:inline">Report</span>
-                             </button>
-                        </div>
-                    </div>
-
-                    {/* Filters - Sticky with higher z-index */}
-                    <div className="bg-white border-b p-2 flex gap-2 overflow-x-auto shrink-0 z-[2900] no-scrollbar sticky top-14 md:top-16">
-                        <button onClick={()=>{setActiveCat(null); setSubFilters({});}} className={`filter-chip px-3 py-2 rounded-full text-xs font-bold border transition whitespace-nowrap active:scale-95 ${!activeCat ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}>All</button>
-                        {CATEGORIES.map(c => (
-                            <button key={c.id} onClick={()=>{setActiveCat(activeCat===c.id?null:c.id); setSubFilters({});}} className={`filter-chip px-3 py-2 rounded-full text-xs font-bold border flex items-center gap-2 whitespace-nowrap transition active:scale-95 ${activeCat===c.id ? `bg-${c.colorClass}-50 text-${c.colorClass}-700 border-${c.colorClass}-500` : 'bg-white text-gray-600'}`}>
-                                <i className={`fas ${c.icon}`}></i> {c.label}
+                        <div className="flex items-center gap-2">
+                            <button onClick={enableLocation} 
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                                        userLocation ? 'gradient-bg' : 'glass'
+                                    }`}>
+                                <i className="fas fa-location-crosshairs text-sm"></i>
                             </button>
-                        ))}
-                        <button onClick={() => setShowSlopeLayer(!showSlopeLayer)} className={`filter-chip px-3 py-2 rounded-full text-xs font-bold border whitespace-nowrap transition active:scale-95 ${showSlopeLayer ? 'bg-orange-50 text-orange-700 border-orange-500' : 'bg-white text-gray-600'}`}>
-                            <i className="fas fa-mountain mr-1"></i> Slope
-                        </button>
+                            <button onClick={() => setShowFeed(true)} className="w-10 h-10 glass rounded-full flex items-center justify-center">
+                                <i className="fas fa-bars text-sm"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Sub-filters */}
-                    {activeCat && activeCat !== 'D' && (
-                        <div className="bg-gray-50 p-2 flex gap-2 overflow-x-auto border-b z-[2800] shrink-0 pop-in no-scrollbar sticky" style={{ top: 'calc(3.5rem + 2.75rem)' }}>
-                            {(activeCat==='A'?SNOW_AMOUNT:activeCat==='B'?SNOW_TYPE:HAZARD_ALERTS).options.map(o => (
-                                <button key={o.value} onClick={()=>setSubFilters({...subFilters, [activeCat]: subFilters[activeCat]===o.value?null:o.value})}
-                                    className={`px-3 py-2 rounded text-xs font-bold border transition whitespace-nowrap active:scale-95 ${subFilters[activeCat]===o.value ? 'bg-gray-800 text-white' : 'bg-white text-gray-500'}`}>
-                                    {o.label}
+                    {/* Map */}
+                    <div className="flex-1 relative">
+                        <div ref={mapRef} className="w-full h-full"></div>
+                        
+                        {/* Category filters */}
+                        <div className="absolute top-4 left-4 right-4 flex gap-2 overflow-x-auto no-scrollbar">
+                            <button onClick={() => setSelectedCategory(null)} 
+                                    className={`chip ${!selectedCategory ? 'bg-white text-black' : 'glass border-white/20'}`}>
+                                All
+                            </button>
+                            {Object.values(CATEGORIES).map(cat => (
+                                <button key={cat.id}
+                                        onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                                        className={`chip ${selectedCategory === cat.id ? 'text-black' : 'glass border-white/20'}`}
+                                        style={selectedCategory === cat.id ? { background: cat.color } : {}}>
+                                    <i className={`fas ${cat.icon} mr-1.5`}></i>
+                                    {cat.label}
                                 </button>
                             ))}
                         </div>
-                    )}
+                    </div>
 
-                    {/* Content */}
-                    <div className="flex-1 relative overflow-hidden">
-                        {/* Map */}
-                        <div className="absolute inset-0 bg-gray-200">
-                             <div ref={mapRef} style={{ width: '100%', height: '100%' }}></div>
-                             <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow z-[500]">
-                                {filteredReports.length} {zoom<10 && filteredReports.length>50 && '(Heat)'}
-                             </div>
+                    {/* FAB */}
+                    <div className="fab safe-bottom" onClick={() => setShowUpload(true)}>
+                        <i className="fas fa-plus text-2xl"></i>
+                    </div>
+
+                    {/* Feed bottom sheet */}
+                    <div className={`bottom-sheet ${showFeed ? 'open' : ''}`}>
+                        <div className="sheet-handle"></div>
+                        
+                        <div className="px-6 pb-4 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">Feed</h2>
+                            <button onClick={() => setShowFeed(false)} className="w-10 h-10 glass rounded-full flex items-center justify-center">
+                                <i className="fas fa-times"></i>
+                            </button>
                         </div>
 
-                        {/* Overlay */}
-                        <div className={`feed-overlay ${showFeed ? 'visible' : ''}`} onClick={() => setShowFeed(false)}></div>
-
-                        {/* Toggle Button */}
-                        <button onClick={() => setShowFeed(!showFeed)} className={`feed-toggle ${showFeed ? 'shifted' : ''} bg-blue-600 text-white w-14 h-14 rounded-r-full shadow-lg flex items-center justify-end pr-4 active:scale-95 transition-all`}>
-                            <i className={`fas ${showFeed ? 'fa-times' : 'fa-list'} text-lg`}></i>
-                        </button>
-
-                        {/* Feed Sidebar */}
-                        <div className={`feed-container ${showFeed ? 'open' : ''}`}>
-                            {/* Swipe Indicator */}
-                            <div className="swipe-indicator lg:hidden"></div>
-                            
-                            {/* Header - Fixed at top */}
-                            <div className="p-4 bg-white border-b z-10 shadow-sm shrink-0 sticky top-0">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h2 className="font-black text-xl tracking-tight">Feed</h2>
-                                    <div className="text-xs text-gray-500 font-medium">{filteredReports.length}</div>
-                                </div>
-                                {/* Friend Filter - Improved */}
-                                <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-bold gap-1">
-                                    <button onClick={() => setFriendsOnly(false)} className={`flex-1 py-2.5 rounded-md transition-all active:scale-95 ${!friendsOnly ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}>Everyone</button>
-                                    <button onClick={() => setFriendsOnly(true)} className={`flex-1 py-2.5 rounded-md transition-all flex items-center justify-center gap-1 active:scale-95 ${friendsOnly ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}>
-                                        <i className={`fas fa-star ${friendsOnly ? 'text-yellow-500' : ''}`}></i> Friends
-                                    </button>
-                                </div>
+                        {/* Friends toggle */}
+                        <div className="px-6 pb-4">
+                            <div className="glass p-1 rounded-2xl flex gap-1">
+                                <button onClick={() => setFriendsOnly(false)} 
+                                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
+                                            !friendsOnly ? 'bg-white text-black' : 'text-white/60'
+                                        }`}>
+                                    Everyone
+                                </button>
+                                <button onClick={() => setFriendsOnly(true)} 
+                                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+                                            friendsOnly ? 'bg-white text-black' : 'text-white/60'
+                                        }`}>
+                                    <i className="fas fa-star text-xs"></i>
+                                    Friends
+                                </button>
                             </div>
-                            
-                            {/* Feed Content with momentum scrolling */}
-                            <div className="flex-1 overflow-y-auto feed-scrollbar bg-gray-50">
-                                {filteredReports.length === 0 ? (
-                                    <div className="p-10 text-center text-gray-400">
-                                        <i className="fas fa-filter text-3xl mb-2"></i>
-                                        <p>No reports found.</p>
-                                    </div>
-                                ) : (
-                                    filteredReports.map(r => (
-                                        <FeedCard 
-                                            key={r.id} report={r} 
-                                            onSelect={(report) => {
-                                                setSelectedReport(report);
-                                                setShowFeed(false);
-                                                mapInstance.current?.flyTo([report.lat, report.lng], 14, { duration: 1 });
-                                            }} 
-                                            userLocation={userLocation}
-                                        />
-                                    ))
-                                )}
-                            </div>
+                        </div>
+
+                        <div className="px-6 overflow-y-auto custom-scroll safe-bottom" style={{ maxHeight: 'calc(85vh - 200px)' }}>
+                            {filteredReports.map(r => (
+                                <FeedCard 
+                                    key={r.id} 
+                                    report={r} 
+                                    onClick={() => {
+                                        setSelectedReport(r);
+                                        setShowFeed(false);
+                                        mapInstance.current?.flyTo([r.lat, r.lng], 14);
+                                    }}
+                                    userLocation={userLocation}
+                                />
+                            ))}
                         </div>
                     </div>
 
-                    {selectedReport && <ReportPopup report={selectedReport} onClose={()=>setSelectedReport(null)} userLocation={userLocation} />}
-                    {showUpload && <UploadModal onClose={()=>setShowUpload(false)} onSubmit={handleNewReport} />}
+                    {/* Overlay */}
+                    <div className={`feed-overlay ${showFeed ? 'visible' : ''}`} onClick={() => setShowFeed(false)}></div>
+
+                    {/* Upload modal */}
+                    {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSubmit={(data) => {
+                        const loc = userLocation || { lat: 46.6, lng: 8.6 };
+                        setReports([{ id: Date.now(), lat: loc.lat, lng: loc.lng, timestamp: Date.now(), ...data }, ...reports]);
+                    }} />}
+
+                    {/* Report detail (simplified) */}
+                    {selectedReport && (
+                        <div className="fixed inset-0 z-[4000] flex items-end" onClick={() => setSelectedReport(null)}>
+                            <div className="feed-overlay visible"></div>
+                            <div className="relative w-full bg-gradient-to-br from-gray-900 to-black rounded-t-3xl scale-in" 
+                                 style={{ maxHeight: '80vh' }}
+                                 onClick={e => e.stopPropagation()}>
+                                <div className="sheet-handle"></div>
+                                <div className="px-6 pb-6 overflow-y-auto custom-scroll" style={{ maxHeight: '75vh' }}>
+                                    <img src={selectedReport.photo} className="w-full aspect-video object-cover rounded-2xl mb-4" />
+                                    <h2 className="text-2xl font-bold mb-2">{selectedReport.name}</h2>
+                                    <p className="text-gray-300 mb-4">{selectedReport.description}</p>
+                                    <div className="flex items-center gap-3">
+                                        <img src={selectedReport.user.avatar} className="w-12 h-12 rounded-full" />
+                                        <div>
+                                            <div className="font-bold">{selectedReport.user.name}</div>
+                                            <div className="text-sm text-gray-400">{CATEGORIES[selectedReport.categoryId].label}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

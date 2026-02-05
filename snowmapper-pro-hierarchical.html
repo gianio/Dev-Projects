@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnowMapper Pro - Swisstopo Edition</title>
+    <title>SnowMapper Pro - Complete Edition</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -23,20 +23,17 @@
 
         /* Animations */
         @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        @keyframes slideInLeft { 0% { transform: translateX(-100%); } 100% { transform: translateX(0); } }
-        @keyframes slideOutLeft { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .pop-in { animation: popIn 0.2s ease-out forwards; }
-        .slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
-        .slide-out-left { animation: slideOutLeft 0.3s ease-out forwards; }
 
         /* Custom Scrollbar */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         /* Instagram-style feed scrollbar */
-        .feed-scrollbar::-webkit-scrollbar { width: 3px; }
+        .feed-scrollbar::-webkit-scrollbar { width: 5px; }
         .feed-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .feed-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .feed-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Map Markers */
         .photo-marker {
@@ -66,27 +63,29 @@
         }
         
         /* Swisstopo Attribution */
-        .leaflet-control-attribution {
-            background: rgba(255, 255, 255, 0.8) !important;
-            padding: 0 5px;
-            font-size: 10px;
-        }
+        .leaflet-control-attribution { background: rgba(255, 255, 255, 0.8) !important; padding: 0 5px; font-size: 10px; }
 
-        /* Instagram-style Feed */
+        /* Instagram-style Feed Container */
         .feed-container {
             position: fixed;
             left: 0;
-            top: 0;
+            top: 60px; /* Below header */
             bottom: 0;
             width: 400px;
-            max-width: 90vw;
+            max-width: 100vw;
             background: white;
             box-shadow: 4px 0 20px rgba(0,0,0,0.15);
             z-index: 2000;
             transform: translateX(-100%);
             transition: transform 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
         }
         .feed-container.open { transform: translateX(0); }
+        
+        @media (max-width: 768px) {
+            .feed-container { top: 56px; width: 100%; }
+        }
 
         /* Feed Toggle Button */
         .feed-toggle {
@@ -99,23 +98,7 @@
         }
         .feed-toggle.shifted { left: 400px; }
         @media (max-width: 768px) {
-            .feed-toggle.shifted { left: 90vw; }
-        }
-
-        /* Story-style avatars */
-        .story-avatar {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            padding: 3px;
-            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-        }
-        .story-avatar-inner {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 3px solid white;
-            overflow: hidden;
+            .feed-toggle.shifted { left: 100%; transform: translate(-100%, -50%); border-radius: 50% 0 0 50%; }
         }
     </style>
 </head>
@@ -167,84 +150,38 @@
 
         const CATEGORIES = [SNOW_AMOUNT, SNOW_TYPE, HAZARD_ALERTS, PEOPLE_TRACKS];
 
-        // Demo data strings
-        const TITLES = [
-            "On the way to Rothorn", "Gemsstock North Face", "Morning at Titlis", "Disentis Couloir",
-            "Davos Tree Run", "Verbier Backside", "Furka Pass Approach", "Hidden Valley Run",
-            "Müstair Valley Tour", "San Bernardino Pass", "Engadin Powder Day", "Arosa Bowl",
-            "Laax Freestyle Park", "Andermatt Powder", "Saas-Fee Glacier", "Zermatt Offpiste",
-            "Eiger North Face View", "Jungfraujoch Descent", "Aletsch Glacier Tour", "Grindelwald First",
-            "Lenzerheide Cruising", "St. Moritz Glamour", "Flims Tree Skiing", "Klosters Backcountry"
-        ];
+        // Demo data
+        const TITLES = [ "Rothorn Descent", "Gemsstock North", "Titlis Morning", "Disentis Couloir", "Davos Trees", "Verbier Backside", "Furka Pass", "Hidden Valley", "Müstair Tour", "San Bernardino" ];
+        const DESCRIPTIONS = [ "Snow was okay, a lot of other people and I was super exhausted.", "Absolutely bombproof stability today. Great lines, but getting tracked out fast.", "Watch out for sharks at the bottom, pretty thin cover below 2000m.", "Wind affected at the ridge, but soft powder in the bowls.", "Heavy wet snow by noon, get out early! Temperatures rising fast." ];
+        
+        // --- FRIEND CONFIG ---
+        const FRIENDS = ['alpine_explorer', 'powder_hunter', 'ski_sarah', 'freeride_fred'];
+        
+        const USERNAMES = [ 'alpine_explorer', 'powder_hunter', 'mountain_mike', 'ski_sarah', 'freeride_fred', 'backcountry_betty', 'peak_pete', 'summit_sam', 'glacier_girl', 'ridge_runner', 'snow_seeker', 'trail_blazer' ];
+        const AVATARS = [ 'https://i.pravatar.cc/150?img=68', 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=12', 'https://i.pravatar.cc/150?img=33', 'https://i.pravatar.cc/150?img=7', 'https://i.pravatar.cc/150?img=22', 'https://i.pravatar.cc/150?img=45', 'https://i.pravatar.cc/150?img=64' ];
+        const SNOW_IMGS = [ 'https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=600', 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=600', 'https://images.unsplash.com/photo-1548777123-e216912df7d8?w=600', 'https://images.unsplash.com/photo-1520625981442-20c2d3a9856f?w=600', 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=600', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600', 'https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=600', 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600' ];
 
-        const DESCRIPTIONS = [
-            "Snow was okay, a lot of other people and I was super exhausted.",
-            "Absolutely bombproof stability today. Great lines, but getting tracked out fast.",
-            "Watch out for sharks at the bottom, pretty thin cover below 2000m.",
-            "Wind affected at the ridge, but soft powder in the bowls.",
-            "Heavy wet snow by noon, get out early! Temperatures rising fast.",
-            "Saw a small slide on the opposite face. Be careful out there.",
-            "Perfect conditions, blue bird day!",
-            "Challenging crust layer on top, difficult skiing.",
-            "Deep powder stashes still available in tree zones.",
-            "Icy conditions on exposed slopes, bring your edges!"
-        ];
-
-        const USERNAMES = [
-            'alpine_explorer', 'powder_hunter', 'mountain_mike', 'ski_sarah', 
-            'freeride_fred', 'backcountry_betty', 'peak_pete', 'summit_sam',
-            'glacier_girl', 'ridge_runner', 'snow_seeker', 'trail_blazer'
-        ];
-
-        const AVATARS = [
-            'https://i.pravatar.cc/150?img=68', 'https://i.pravatar.cc/150?img=52',
-            'https://i.pravatar.cc/150?img=12', 'https://i.pravatar.cc/150?img=33',
-            'https://i.pravatar.cc/150?img=7', 'https://i.pravatar.cc/150?img=22',
-            'https://i.pravatar.cc/150?img=45', 'https://i.pravatar.cc/150?img=64'
-        ];
-
-        const SNOW_IMGS = [
-            'https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=600',
-            'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=600',
-            'https://images.unsplash.com/photo-1548777123-e216912df7d8?w=600',
-            'https://images.unsplash.com/photo-1520625981442-20c2d3a9856f?w=600',
-            'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=600',
-            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600',
-            'https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=600',
-            'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=600'
-        ];
-
-        // Swiss Alps regions
         const SWISS_REGIONS = [
             { name: 'Valais', lat: 46.2, lng: 7.6, spread: 0.4 },
             { name: 'Bern', lat: 46.6, lng: 7.9, spread: 0.3 },
             { name: 'Uri', lat: 46.7, lng: 8.6, spread: 0.25 },
             { name: 'Graubünden', lat: 46.6, lng: 9.5, spread: 0.5 },
-            { name: 'Ticino', lat: 46.4, lng: 8.8, spread: 0.3 },
-            { name: 'Vaud', lat: 46.3, lng: 7.1, spread: 0.2 },
             { name: 'Central', lat: 46.9, lng: 8.4, spread: 0.25 }
         ];
-
-        // Friends list (for demo)
-        const FRIENDS = ['alpine_explorer', 'powder_hunter', 'ski_sarah', 'freeride_fred'];
 
         // ==================== 2. DATA GENERATOR ====================
         const generateDemoReports = (count) => {
             const reports = [];
             const today = Date.now();
-
             for (let i = 0; i < count; i++) {
                 const daysAgo = Math.floor(Math.random() * 20);
                 const timestamp = today - (daysAgo * 86400000);
-                const dateStr = new Date(timestamp).toLocaleDateString();
-
                 const region = SWISS_REGIONS[Math.floor(Math.random() * SWISS_REGIONS.length)];
                 const lat = region.lat + (Math.random() - 0.5) * region.spread;
                 const lng = region.lng + (Math.random() - 0.5) * region.spread;
 
                 const catKeys = ['A', 'B', 'C', 'D'];
                 const mainCat = catKeys[Math.floor(Math.random() * catKeys.length)];
-
                 const categories = { A: null, B: null, C: null, D: null };
 
                 if (mainCat === 'A') {
@@ -255,32 +192,23 @@
                     categories.B = { value: opt.value, label: opt.label, depth: Math.floor(Math.random() * 150) + 10 };
                 } else if (mainCat === 'C') {
                     const opt = HAZARD_ALERTS.options[Math.floor(Math.random() * HAZARD_ALERTS.options.length)];
-                    categories.C = {
-                        type: opt.value, label: opt.label,
-                        size: HAZARD_ALERTS.sizes[Math.floor(Math.random()*HAZARD_ALERTS.sizes.length)],
-                        trigger: HAZARD_ALERTS.triggers[Math.floor(Math.random()*HAZARD_ALERTS.triggers.length)]
-                    };
+                    categories.C = { type: opt.value, label: opt.label, size: HAZARD_ALERTS.sizes[Math.floor(Math.random()*4)], trigger: HAZARD_ALERTS.triggers[Math.floor(Math.random()*3)] };
                 } else if (mainCat === 'D') {
                     categories.D = Math.floor(Math.random() * 50) + 1;
                 }
 
                 const username = USERNAMES[i % USERNAMES.length];
-                const isFriend = FRIENDS.includes(username);
-
                 reports.push({
                     id: i,
                     name: TITLES[i % TITLES.length],
                     description: DESCRIPTIONS[i % DESCRIPTIONS.length],
-                    lat,
-                    lng,
-                    timestamp,
-                    date: dateStr,
+                    lat, lng, timestamp, date: new Date(timestamp).toLocaleDateString(),
                     photo: SNOW_IMGS[i % SNOW_IMGS.length],
                     user: {
                         name: username,
                         avatar: AVATARS[i % AVATARS.length],
-                        level: ['Beginner', 'Intermediate', 'Advanced', 'Pro Scout'][Math.floor(Math.random() * 4)],
-                        isFriend
+                        level: 'Pro',
+                        isFriend: FRIENDS.includes(username) // Flag
                     },
                     mainCategory: mainCat,
                     categories: categories
@@ -301,69 +229,73 @@
         };
 
         const calculateDistance = (lat1, lng1, lat2, lng2) => {
-            const R = 6371; // Earth radius in km
+            if(!lat1 || !lat2) return null;
+            const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         };
 
         // ==================== 4. COMPONENTS ====================
 
-        // Instagram-style Feed Card
+        // Insta Feed Card
         const FeedCard = ({ report, onSelect, userLocation }) => {
             const mc = report.mainCategory;
-            let badgeColor = 'bg-gray-500';
-            let badgeIcon = 'fa-circle';
-            
+            let badgeColor = 'bg-gray-500', badgeIcon = 'fa-circle';
             if(mc === 'A') { badgeColor = 'bg-blue-600'; badgeIcon = 'fa-layer-group'; }
             if(mc === 'B') { badgeColor = 'bg-indigo-600'; badgeIcon = 'fa-snowflake'; }
             if(mc === 'C') { badgeColor = 'bg-red-600'; badgeIcon = 'fa-triangle-exclamation'; }
             if(mc === 'D') { badgeColor = 'bg-purple-600'; badgeIcon = 'fa-users'; }
 
-            const distance = userLocation ? 
-                calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
+            const distance = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
 
             return (
-                <div className="bg-white border-b border-gray-200" onClick={() => onSelect(report)}>
+                <div className="bg-white border-b border-gray-100 mb-2">
                     {/* Header */}
-                    <div className="p-3 flex items-center justify-between">
+                    <div className="px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <img src={report.user.avatar} className="w-10 h-10 rounded-full border-2 border-gray-200" />
-                            <div>
-                                <div className="font-bold text-sm">{report.user.name}</div>
-                                {distance && (
-                                    <div className="text-xs text-gray-500">
-                                        <i className="fas fa-location-dot mr-1"></i>
-                                        {distance < 1 ? `${Math.round(distance * 1000)}m away` : `${distance.toFixed(1)}km away`}
-                                    </div>
-                                )}
+                            <div className={`p-[2px] rounded-full ${report.user.isFriend ? 'bg-gradient-to-tr from-yellow-400 to-pink-600' : 'bg-gray-200'}`}>
+                                <img src={report.user.avatar} className="w-8 h-8 rounded-full border-2 border-white" />
+                            </div>
+                            <div className="leading-tight">
+                                <div className="font-bold text-sm text-gray-900 flex items-center gap-1">
+                                    {report.user.name}
+                                    {report.user.isFriend && <i className="fas fa-star text-[10px] text-yellow-500" title="Friend"></i>}
+                                </div>
+                                <div className="text-[10px] text-gray-500">
+                                    {distance ? <span>{distance < 1 ? `${Math.round(distance*1000)}m` : `${distance.toFixed(1)}km`} • </span> : ''}
+                                    {report.date}
+                                </div>
                             </div>
                         </div>
-                        <div className="text-xs text-gray-400">{report.date}</div>
                     </div>
 
                     {/* Image */}
-                    <div className="relative bg-black">
-                        <img src={report.photo} className="w-full aspect-square object-cover cursor-pointer" />
-                        <div className={`absolute top-3 right-3 ${badgeColor} text-white px-2 py-1 rounded-full text-xs font-bold`}>
+                    <div className="relative bg-gray-100 aspect-square group cursor-pointer" onClick={() => onSelect(report)}>
+                        <img src={report.photo} className="w-full h-full object-cover" />
+                        <div className={`absolute top-3 right-3 ${badgeColor} text-white px-2 py-1 rounded-full text-xs font-bold shadow-sm`}>
                             <i className={`fas ${badgeIcon} mr-1`}></i>{mc}
+                        </div>
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <div className="bg-white/90 px-4 py-2 rounded-full font-bold text-sm shadow">View Map</div>
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-3">
-                        <div className="font-bold text-sm mb-1">{report.name}</div>
-                        <div className="text-sm text-gray-700 line-clamp-2">{report.description}</div>
+                    {/* Actions */}
+                    <div className="px-4 py-3">
+                        <div className="flex items-center gap-4 mb-2 text-2xl text-gray-800">
+                            <i className="far fa-heart hover:text-red-500 cursor-pointer"></i>
+                            <i className="far fa-comment hover:text-blue-500 cursor-pointer"></i>
+                            <i className="far fa-paper-plane hover:text-gray-600 cursor-pointer"></i>
+                        </div>
+                        <div className="text-sm"><span className="font-bold mr-2">{report.user.name}</span>{report.description}</div>
                     </div>
                 </div>
             );
         };
 
-        // Upload Modal (simplified)
+        // Upload Modal
         const UploadModal = ({ onClose, onSubmit }) => {
             const [cat, setCat] = useState(null);
             const [photo, setPhoto] = useState(null);
@@ -381,18 +313,14 @@
             const handleSubmit = () => {
                 if(!cat || !photo || !form.title) return;
                 const categories = { A: null, B: null, C: null, D: null };
-
                 if(cat === 'A') categories.A = { value: form.typeVal, label: SNOW_AMOUNT.options.find(o=>o.value === form.typeVal)?.label || 'Good Coverage' };
                 if(cat === 'B') categories.B = { value: form.typeVal, label: SNOW_TYPE.options.find(o=>o.value === form.typeVal)?.label || 'Powder', depth: form.depth };
                 if(cat === 'C') categories.C = { type: form.typeVal, label: HAZARD_ALERTS.options.find(o=>o.value === form.typeVal)?.label || 'Avalanche', size: form.size, trigger: 'Skier' };
                 if(cat === 'D') categories.D = parseInt(form.count);
 
                 onSubmit({
-                    name: form.title,
-                    description: form.description || "No description provided.",
-                    mainCategory: cat, 
-                    categories, 
-                    photo,
+                    name: form.title, description: form.description || "No description provided.",
+                    mainCategory: cat, categories, photo,
                     user: { name: 'You', avatar: 'https://i.pravatar.cc/150?img=68', level: 'New', isFriend: false }
                 });
                 onClose();
@@ -408,35 +336,27 @@
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             {!photo ? (
                                 <div onClick={()=>document.getElementById('u').click()} className="h-32 bg-gray-50 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition">
-                                    <div className="text-center text-gray-400">
-                                        <i className="fas fa-camera text-2xl mb-2"></i>
-                                        <div className="text-xs font-bold">Upload Photo</div>
-                                    </div>
+                                    <div className="text-center text-gray-400"><i className="fas fa-camera text-2xl mb-2"></i><div className="text-xs font-bold">Upload Photo</div></div>
                                     <input id="u" type="file" className="hidden" accept="image/*" onChange={handleFile}/>
                                 </div>
                             ) : (
                                 <img src={photo} className="w-full h-48 object-cover rounded-xl" />
                             )}
-
                             <input type="text" className="w-full p-2 border rounded font-bold" placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
                             <textarea className="w-full p-2 border rounded text-sm h-20" placeholder="Description..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}></textarea>
-
                             <div className="grid grid-cols-4 gap-2">
                                 {CATEGORIES.map(c => (
                                     <button key={c.id} onClick={()=>setCat(c.id)} className={`flex flex-col items-center p-3 rounded-lg border transition ${cat===c.id ? `bg-${c.colorClass}-50 border-${c.colorClass}-500` : 'border-gray-200'}`}>
-                                        <i className={`fas ${c.icon} text-lg mb-1`}></i>
-                                        <span className="text-[10px] font-bold">{c.id}</span>
+                                        <i className={`fas ${c.icon} text-lg mb-1`}></i><span className="text-[10px] font-bold">{c.id}</span>
                                     </button>
                                 ))}
                             </div>
-
                             {cat && (cat === 'A' || cat === 'B' || cat === 'C') && (
                                 <select className="w-full p-2 border rounded" value={form.typeVal} onChange={e=>setForm({...form, typeVal: e.target.value})}>
                                     <option value="">Select Type...</option>
                                     {(cat==='A'?SNOW_AMOUNT:cat==='B'?SNOW_TYPE:HAZARD_ALERTS).options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                                 </select>
                             )}
-                            {cat === 'D' && <input type="number" placeholder="Count" className="w-full p-2 border rounded" value={form.count} onChange={e=>setForm({...form, count: e.target.value})}/>}
                         </div>
                         <div className="p-4 border-t shrink-0">
                             <button onClick={handleSubmit} disabled={!cat || !photo || !form.title} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold disabled:opacity-50">Publish</button>
@@ -450,94 +370,30 @@
         const ReportPopup = ({ report, onClose, userLocation }) => {
             const mc = report.mainCategory;
             const c = report.categories;
-            let theme = { color: 'text-gray-600', bg: 'bg-gray-100', icon: 'fa-info' };
-
-            if(mc === 'A') theme = { color: 'text-blue-600', bg: 'bg-blue-50', icon: 'fa-layer-group' };
-            if(mc === 'B') theme = { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: 'fa-snowflake' };
-            if(mc === 'C') theme = { color: 'text-red-600', bg: 'bg-red-50', icon: 'fa-triangle-exclamation' };
-            if(mc === 'D') theme = { color: 'text-purple-600', bg: 'bg-purple-50', icon: 'fa-users' };
-
-            const distance = userLocation ? 
-                calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
+            const distance = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, report.lat, report.lng) : null;
 
             return (
                 <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
                     <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl pop-in relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <button onClick={onClose} className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 text-white rounded-full hover:bg-black/70 flex items-center justify-center transition"><i className="fas fa-times text-lg"></i></button>
+                        <button onClick={onClose} className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 text-white rounded-full hover:bg-black/70 flex items-center justify-center"><i className="fas fa-times"></i></button>
 
                         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                             <div className="md:w-3/5 h-64 md:h-auto relative bg-black shrink-0">
                                 <img src={report.photo} className="w-full h-full object-cover" />
-                                <div className={`absolute bottom-4 left-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 shadow ${theme.color}`}>
-                                    <i className={`fas ${theme.icon} mr-2`}></i> {mc === 'C' ? 'HAZARD' : 'Report'}
-                                </div>
                             </div>
-
                             <div className="md:w-2/5 p-6 overflow-y-auto flex flex-col">
-                                <div className="mb-4">
-                                    <h2 className="text-xl md:text-2xl font-bold text-gray-800 leading-tight">{report.name}</h2>
-                                    <div className="text-sm text-gray-500 flex items-center gap-3 mt-2 mb-3">
-                                        <span><i className="far fa-calendar mr-1"></i> {report.date}</span>
-                                        {distance && (
-                                            <span><i className="fas fa-location-dot mr-1"></i> {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}</span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-gray-700 leading-relaxed italic border-l-2 pl-3 border-gray-200">
-                                        "{report.description}"
-                                    </p>
+                                <h2 className="text-xl font-bold text-gray-800">{report.name}</h2>
+                                <div className="text-sm text-gray-500 flex items-center gap-3 mt-2 mb-3">
+                                    <span>{report.date}</span>
+                                    {distance && <span><i className="fas fa-location-dot mr-1"></i>{distance < 1 ? `${Math.round(distance*1000)}m` : `${distance.toFixed(1)}km`}</span>}
                                 </div>
-
-                                <div className="flex-1 space-y-4">
-                                    {mc === 'A' && c.A && (
-                                        <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                            <div className="text-xs text-blue-500 font-bold uppercase">Coverage</div>
-                                            <div className="text-xl font-bold text-blue-900">{c.A.label}</div>
-                                        </div>
-                                    )}
-                                    {mc === 'B' && c.B && (
-                                        <div className="space-y-2">
-                                            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                                                <div className="text-xs text-indigo-500 font-bold uppercase">Snow Type</div>
-                                                <div className="text-xl font-bold text-indigo-900">{c.B.label}</div>
-                                            </div>
-                                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
-                                                <span className="text-gray-600 font-medium">Depth</span>
-                                                <span className="text-2xl font-black text-gray-800">{c.B.depth}<span className="text-sm font-normal text-gray-500">cm</span></span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {mc === 'C' && c.C && (
-                                        <div className="space-y-2">
-                                            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                                                <div className="text-xs text-red-500 font-bold uppercase">Hazard Type</div>
-                                                <div className="text-xl font-bold text-red-900">{c.C.label}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="p-3 bg-gray-50 rounded-lg text-center">
-                                                    <div className="text-xs text-gray-500">Size</div>
-                                                    <div className="font-bold">{c.C.size}</div>
-                                                </div>
-                                                <div className="p-3 bg-gray-50 rounded-lg text-center">
-                                                    <div className="text-xs text-gray-500">Trigger</div>
-                                                    <div className="font-bold">{c.C.trigger}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {mc === 'D' && c.D && (
-                                        <div className="p-6 bg-purple-50 rounded-xl border border-purple-100 text-center">
-                                            <div className="text-4xl font-black text-purple-600">{c.D}</div>
-                                            <div className="text-sm font-bold text-purple-400 uppercase">People Spotted</div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-6 pt-6 border-t flex items-center gap-3 shrink-0">
-                                    <img src={report.user.avatar} className="w-10 h-10 rounded-full border border-gray-200" />
-                                    <div>
-                                        <div className="font-bold text-sm text-gray-800">{report.user.name}</div>
-                                        <div className="text-xs text-gray-500">{report.user.level}</div>
-                                    </div>
+                                <p className="text-sm text-gray-700 italic border-l-2 pl-3 border-gray-200 mb-4">"{report.description}"</p>
+                                
+                                <div className="flex-1 space-y-3">
+                                    {mc === 'A' && c.A && <div className="p-3 bg-blue-50 rounded border border-blue-100"><div className="text-xs text-blue-500 font-bold">Coverage</div><div className="font-bold text-blue-900">{c.A.label}</div></div>}
+                                    {mc === 'B' && c.B && <div className="p-3 bg-indigo-50 rounded border border-indigo-100"><div className="text-xs text-indigo-500 font-bold">Snow Type</div><div className="font-bold text-indigo-900">{c.B.label} ({c.B.depth}cm)</div></div>}
+                                    {mc === 'C' && c.C && <div className="p-3 bg-red-50 rounded border border-red-100"><div className="text-xs text-red-500 font-bold">Hazard</div><div className="font-bold text-red-900">{c.C.label}</div><div className="text-xs mt-1">Size: {c.C.size} | Trig: {c.C.trigger}</div></div>}
+                                    {mc === 'D' && c.D && <div className="p-3 bg-purple-50 rounded border border-purple-100 text-center"><div className="text-3xl font-black text-purple-600">{c.D}</div><div className="text-xs font-bold text-purple-400">People</div></div>}
                                 </div>
                             </div>
                         </div>
@@ -553,14 +409,15 @@
             const [activeCat, setActiveCat] = useState(null); 
             const [timeFilter, setTimeFilter] = useState(DATE_FILTERS.ALL);
             const [subFilters, setSubFilters] = useState({}); 
+            
+            // New States
             const [friendsOnly, setFriendsOnly] = useState(false);
+            const [showSlopeLayer, setShowSlopeLayer] = useState(false);
 
             const [selectedReport, setSelectedReport] = useState(null);
             const [showUpload, setShowUpload] = useState(false);
             const [showFeed, setShowFeed] = useState(false);
             const [zoom, setZoom] = useState(9);
-            const [showSlopeLayer, setShowSlopeLayer] = useState(false);
-
             const [userLocation, setUserLocation] = useState(null);
             const [locationEnabled, setLocationEnabled] = useState(false);
 
@@ -568,86 +425,52 @@
             const mapInstance = useRef(null);
             const markersRef = useRef([]);
             const heatLayerRef = useRef(null);
-            const slopeLayerRef = useRef(null);
+            const slopeLayerRef = useRef(null); // Ref for Slope Layer
             const userMarkerRef = useRef(null);
 
-            // Request user location
+            // Location
             const enableLocation = () => {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const loc = {
-                                lat: position.coords.latitude,
-                                lng: position.coords.longitude
-                            };
-                            setUserLocation(loc);
-                            setLocationEnabled(true);
-                            
-                            if (mapInstance.current) {
-                                mapInstance.current.flyTo([loc.lat, loc.lng], 12, { duration: 1.5 });
-                                
-                                // Add user location marker
-                                if (userMarkerRef.current) {
-                                    userMarkerRef.current.remove();
-                                }
-                                
-                                const userIcon = L.divIcon({
-                                    className: 'custom',
-                                    html: '<div class="user-location-marker"></div>',
-                                    iconSize: [20, 20],
-                                    iconAnchor: [10, 10]
-                                });
-                                
-                                userMarkerRef.current = L.marker([loc.lat, loc.lng], { icon: userIcon })
-                                    .addTo(mapInstance.current);
-                            }
-                        },
-                        (error) => {
-                            alert('Could not get your location. Please enable location services.');
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        setUserLocation(loc);
+                        setLocationEnabled(true);
+                        if (mapInstance.current) {
+                            mapInstance.current.flyTo([loc.lat, loc.lng], 12);
+                            if (userMarkerRef.current) userMarkerRef.current.remove();
+                            const userIcon = L.divIcon({ className: 'custom', html: '<div class="user-location-marker"></div>', iconSize: [20, 20] });
+                            userMarkerRef.current = L.marker([loc.lat, loc.lng], { icon: userIcon }).addTo(mapInstance.current);
                         }
-                    );
-                } else {
-                    alert('Geolocation is not supported by your browser.');
+                    }, () => alert('Location access denied'));
                 }
             };
 
             const filteredReports = useMemo(() => {
                 let filtered = reports.filter(r => {
                     if(!checkDateFilter(r.timestamp, timeFilter)) return false;
-                    if(activeCat && r.mainCategory !== activeCat) return false;
+                    
+                    // Friend Filter
                     if(friendsOnly && !r.user.isFriend) return false;
-                    if(activeCat) {
-                        const filterVal = subFilters[activeCat];
-                        if(filterVal) {
-                            if(activeCat === 'A' && r.categories.A?.value !== filterVal) return false;
-                            if(activeCat === 'B' && r.categories.B?.value !== filterVal) return false;
-                            if(activeCat === 'C' && r.categories.C?.type !== filterVal) return false;
-                        }
+
+                    if(activeCat && r.mainCategory !== activeCat) return false;
+                    if(activeCat && subFilters[activeCat]) {
+                        if(activeCat === 'A' && r.categories.A?.value !== subFilters[activeCat]) return false;
+                        if(activeCat === 'B' && r.categories.B?.value !== subFilters[activeCat]) return false;
+                        if(activeCat === 'C' && r.categories.C?.type !== subFilters[activeCat]) return false;
                     }
                     return true;
                 });
-
-                // Sort by distance if location enabled
+                
+                // Sort by distance if location known
                 if (userLocation) {
-                    filtered = filtered.map(r => ({
-                        ...r,
-                        distance: calculateDistance(userLocation.lat, userLocation.lng, r.lat, r.lng)
-                    })).sort((a, b) => a.distance - b.distance);
+                    filtered = filtered.map(r => ({ ...r, distance: calculateDistance(userLocation.lat, userLocation.lng, r.lat, r.lng) })).sort((a, b) => a.distance - b.distance);
                 }
-
                 return filtered;
             }, [reports, activeCat, timeFilter, subFilters, friendsOnly, userLocation]);
 
             const handleNewReport = (data) => {
                 const loc = userLocation || { lat: 46.6, lng: 8.6 };
-                const newR = {
-                    id: Date.now(),
-                    lat: loc.lat,
-                    lng: loc.lng,
-                    timestamp: Date.now(),
-                    date: 'Just Now',
-                    ...data
-                };
+                const newR = { id: Date.now(), lat: loc.lat, lng: loc.lng, timestamp: Date.now(), date: 'Just Now', ...data };
                 setReports([newR, ...reports]);
                 if(mapInstance.current) mapInstance.current.flyTo([loc.lat, loc.lng], 13);
             };
@@ -656,37 +479,23 @@
             useEffect(() => {
                 if(!mapInstance.current && mapRef.current) {
                     const map = L.map(mapRef.current, { zoomControl: false }).setView([46.8, 8.2], 9);
-                    
-                    // Base layer: Swisstopo
                     L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', {
-                        attribution: '&copy; <a href="https://www.swisstopo.admin.ch/">swisstopo</a>',
-                        minZoom: 8,
-                        maxZoom: 19
+                        attribution: '&copy; swisstopo', minZoom: 8, maxZoom: 19
                     }).addTo(map);
-                    
                     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
                     map.on('zoomend', () => setZoom(map.getZoom()));
-                    map.on('click', () => setSelectedReport(null));
-
                     mapInstance.current = map;
                 }
             }, []);
 
-            // Toggle Slope Layer (Hangneigungsklasse)
+            // Slope Layer
             useEffect(() => {
                 if (!mapInstance.current) return;
-                
                 if (showSlopeLayer) {
                     if (!slopeLayerRef.current) {
-                        // Swisstopo Hangneigungsklasse layer
                         slopeLayerRef.current = L.tileLayer(
                             'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.hangneigung-ueber_30/default/current/3857/{z}/{x}/{y}.png',
-                            {
-                                attribution: '&copy; <a href="https://www.swisstopo.admin.ch/">swisstopo</a>',
-                                opacity: 0.6,
-                                maxZoom: 17
-                            }
+                            { attribution: '&copy; swisstopo', opacity: 0.5, maxZoom: 17 }
                         ).addTo(mapInstance.current);
                     }
                 } else {
@@ -697,17 +506,14 @@
                 }
             }, [showSlopeLayer]);
 
-            // Map Rendering
+            // Markers & Heatmap
             useEffect(() => {
                 if(!mapInstance.current) return;
                 const map = mapInstance.current;
 
                 markersRef.current.forEach(m => m.remove());
                 markersRef.current = [];
-                if(heatLayerRef.current) {
-                    try{ heatLayerRef.current.remove(); }catch(e){}
-                    heatLayerRef.current = null;
-                }
+                if(heatLayerRef.current) { try{ heatLayerRef.current.remove(); }catch(e){} heatLayerRef.current = null; }
 
                 if(filteredReports.length > 50 && zoom < 10) {
                     const points = filteredReports.map(r => [r.lat, r.lng, 0.6]);
@@ -738,9 +544,6 @@
                         markersRef.current.push(m);
                     });
                 }
-                
-                setTimeout(() => map.invalidateSize(), 200);
-
             }, [filteredReports, zoom]);
 
             return (
@@ -748,45 +551,32 @@
                     {/* Header */}
                     <div className="h-14 md:h-16 bg-white border-b shadow-sm z-[3000] flex items-center justify-between px-3 md:px-4 shrink-0">
                         <div className="font-black text-gray-800 flex items-center gap-2 text-sm md:text-base">
-                            <i className="fas fa-snowflake text-blue-600"></i> SnowMapper <span className="text-[10px] bg-red-600 text-white px-1 rounded ml-1">CH</span>
+                            <i className="fas fa-snowflake text-blue-600"></i> SnowMapper
                         </div>
-
                         <div className="flex gap-2 items-center">
-                             {/* Location Toggle */}
-                             <button 
-                                onClick={enableLocation}
-                                className={`p-2 rounded-lg transition ${locationEnabled ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                title="Enable Location"
-                             >
-                                <i className="fas fa-location-crosshairs"></i>
-                             </button>
-
-                             <select className="bg-gray-100 text-xs font-bold py-1.5 md:py-2 px-2 md:px-3 rounded-full outline-none"
-                                value={timeFilter} onChange={e=>setTimeFilter(e.target.value)}>
+                             <button onClick={enableLocation} className={`p-2 rounded-lg transition ${locationEnabled ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><i className="fas fa-location-crosshairs"></i></button>
+                             <select className="bg-gray-100 text-xs font-bold py-1.5 md:py-2 px-2 md:px-3 rounded-full outline-none" value={timeFilter} onChange={e=>setTimeFilter(e.target.value)}>
                                 <option value={DATE_FILTERS.ALL}>All</option>
                                 <option value={DATE_FILTERS.THIS_WEEK}>7d</option>
                                 <option value={DATE_FILTERS.YESTERDAY}>24h</option>
                              </select>
                              <button onClick={() => setShowUpload(true)} className="bg-blue-600 text-white px-3 py-1.5 md:py-2 rounded-lg text-xs font-bold hover:bg-blue-700">
-                                <i className="fas fa-plus mr-1"></i> <span className="hidden md:inline">Report</span>
+                                <i className="fas fa-plus mr-1"></i> Report
                              </button>
                         </div>
                     </div>
 
-                    {/* Category Filters */}
+                    {/* Filters */}
                     <div className="bg-white border-b p-2 flex gap-2 overflow-x-auto shrink-0 z-[2900] no-scrollbar">
                         <button onClick={()=>{setActiveCat(null); setSubFilters({});}} className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap ${!activeCat ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}>All</button>
                         {CATEGORIES.map(c => (
                             <button key={c.id} onClick={()=>{setActiveCat(activeCat===c.id?null:c.id); setSubFilters({});}} className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold border flex items-center gap-2 whitespace-nowrap transition ${activeCat===c.id ? `bg-${c.colorClass}-50 text-${c.colorClass}-700 border-${c.colorClass}-500` : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                                <i className={`fas ${c.icon}`}></i> <span className="hidden sm:inline">{c.label}</span><span className="sm:hidden">{c.id}</span>
+                                <i className={`fas ${c.icon}`}></i> {c.label}
                             </button>
                         ))}
-                        {/* Slope Layer Toggle */}
-                        <button 
-                            onClick={() => setShowSlopeLayer(!showSlopeLayer)}
-                            className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition ${showSlopeLayer ? 'bg-orange-50 text-orange-700 border-orange-500' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                        >
-                            <i className="fas fa-mountain mr-1"></i> <span className="hidden sm:inline">Slope >30°</span><span className="sm:hidden">Slope</span>
+                        {/* Slope Toggle */}
+                        <button onClick={() => setShowSlopeLayer(!showSlopeLayer)} className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition ${showSlopeLayer ? 'bg-orange-50 text-orange-700 border-orange-500' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                            <i className="fas fa-mountain mr-1"></i> Slope >30°
                         </button>
                     </div>
 
@@ -802,7 +592,7 @@
                         </div>
                     )}
 
-                    {/* Main Content */}
+                    {/* Content */}
                     <div className="flex-1 relative overflow-hidden">
                         {/* Map */}
                         <div className="absolute inset-0 bg-gray-200">
@@ -812,58 +602,41 @@
                              </div>
                         </div>
 
-                        {/* Feed Toggle Button */}
-                        <button 
-                            onClick={() => setShowFeed(!showFeed)}
-                            className={`feed-toggle ${showFeed ? 'shifted' : ''} bg-blue-600 text-white w-12 h-12 rounded-r-full shadow-lg flex items-center justify-end pr-3 hover:bg-blue-700 transition-all`}
-                        >
+                        {/* Toggle Button */}
+                        <button onClick={() => setShowFeed(!showFeed)} className={`feed-toggle ${showFeed ? 'shifted' : ''} bg-blue-600 text-white w-12 h-12 rounded-r-full shadow-lg flex items-center justify-end pr-3 hover:bg-blue-700 transition-all`}>
                             <i className={`fas ${showFeed ? 'fa-chevron-left' : 'fa-list'}`}></i>
                         </button>
 
-                        {/* Instagram-style Feed */}
+                        {/* Feed Sidebar */}
                         <div className={`feed-container ${showFeed ? 'open' : ''}`}>
-                            {/* Feed Header */}
-                            <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-blue-50 shrink-0">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h2 className="font-black text-lg text-gray-800">Feed</h2>
-                                    <button onClick={() => setShowFeed(false)} className="lg:hidden w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                                        <i className="fas fa-times text-sm"></i>
-                                    </button>
+                            <div className="p-4 bg-white border-b z-10 shadow-sm shrink-0">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h2 className="font-black text-xl tracking-tight">Feed</h2>
+                                    <div className="text-xs text-gray-500 font-medium">{filteredReports.length} results</div>
                                 </div>
-                                
-                                {/* Friends Filter */}
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => setFriendsOnly(false)}
-                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${!friendsOnly ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`}
-                                    >
-                                        Everyone
-                                    </button>
-                                    <button 
-                                        onClick={() => setFriendsOnly(true)}
-                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${friendsOnly ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`}
-                                    >
-                                        <i className="fas fa-user-friends mr-1"></i> Friends
+                                {/* Friend Filter */}
+                                <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-bold">
+                                    <button onClick={() => setFriendsOnly(false)} className={`flex-1 py-2 rounded-md transition-all ${!friendsOnly ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Everyone</button>
+                                    <button onClick={() => setFriendsOnly(true)} className={`flex-1 py-2 rounded-md transition-all flex items-center justify-center gap-1 ${friendsOnly ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        <i className={`fas fa-star ${friendsOnly ? 'text-yellow-500' : ''}`}></i> Only Friends
                                     </button>
                                 </div>
                             </div>
-
-                            {/* Feed Content */}
-                            <div className="flex-1 overflow-y-auto feed-scrollbar">
+                            
+                            <div className="flex-1 overflow-y-auto feed-scrollbar bg-gray-50">
                                 {filteredReports.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500">
-                                        <i className="fas fa-inbox text-4xl mb-3"></i>
-                                        <p>No reports found</p>
+                                    <div className="p-10 text-center text-gray-400">
+                                        <i className="fas fa-filter text-3xl mb-2"></i>
+                                        <p>No reports found.</p>
                                     </div>
                                 ) : (
                                     filteredReports.map(r => (
                                         <FeedCard 
-                                            key={r.id} 
-                                            report={r} 
+                                            key={r.id} report={r} 
                                             onSelect={(report) => {
                                                 setSelectedReport(report);
                                                 mapInstance.current?.flyTo([report.lat, report.lng], 14);
-                                            }}
+                                            }} 
                                             userLocation={userLocation}
                                         />
                                     ))

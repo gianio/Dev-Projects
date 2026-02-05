@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnowMapper Pro - Swisstopo Edition</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; overflow: hidden; background: #f1f5f9; }
+
+        /* Animations */
+        @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .pop-in { animation: popIn 0.2s ease-out forwards; }
+
+        /* Custom Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Map Markers */
+        .photo-marker {
+            width: 50px; height: 50px; border-radius: 50%; border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden; background: white;
+            transition: transform 0.2s;
+        }
+        .photo-marker:hover { transform: scale(1.2); z-index: 1000 !important; border-color: #3b82f6; }
+
+        .icon-marker {
+            width: 32px; height: 32px; border-radius: 50%; border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 14px; transition: transform 0.2s;
+        }
+        .icon-marker:hover { transform: scale(1.2); z-index: 1000; }
+
+        /* Specific Leaflet Fix for Swisstopo Attribution */
+        .leaflet-control-attribution {
+            background: rgba(255, 255, 255, 0.8) !important;
+            padding: 0 5px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // ==================== 1. CONFIGURATION ====================
+
+        const DATE_FILTERS = { ALL: 'all', YESTERDAY: 'yesterday', THIS_WEEK: 'this_week', LAST_WEEK: 'last_week' };
+
+        // 1. Snow Amount (A)
+        const SNOW_AMOUNT = {
+            id: 'A', label: 'Snow Amount', icon: 'fa-layer-group', colorClass: 'blue',
+            options: [
+                { value: 'sharks', label: 'Visible Sharks', icon: 'fa-mountain' },
+                { value: 'low_coverage', label: 'Low Coverage', icon: 'fa-minus' },
+                { value: 'good_coverage', label: 'Good Coverage', icon: 'fa-check' },
+                { value: 'deep', label: 'Deep', icon: 'fa-arrow-down' }
+            ]
+        };
+
+        // 2. Snow Type (B) - Added Depth
+        const SNOW_TYPE = {
+            id: 'B', label: 'Snow Type', icon: 'fa-snowflake', colorClass: 'indigo',
+            options: [
+                { value: 'powder', label: 'Powder' },
+                { value: 'wind_crust', label: 'Wind Crust' },
+                { value: 'sun_crust', label: 'Sun Crust' },
+                { value: 'wet_heavy', label: 'Wet / Heavy' },
+                { value: 'ice', label: 'Ice' }
+            ]
+        };
+
+        // 3. Hazards (C) - Added Size & Trigger
+        const HAZARD_ALERTS = {
+            id: 'C', label: 'Hazards', icon: 'fa-triangle-exclamation', colorClass: 'red',
+            options: [
+                { value: 'slab', label: 'Slab Avalanche' },
+                { value: 'loose', label: 'Loose Wet' },
+                { value: 'glide', label: 'Glide Crack' },
+                { value: 'whumpf', label: 'Whumpf Sound' }
+            ],
+            sizes: ['Small', 'Medium', 'Large', 'Extreme'],
+            triggers: ['Natural', 'Skier', 'Remote']
+        };
+
+        // 4. People (D)
+        const PEOPLE_TRACKS = { id: 'D', label: 'People', icon: 'fa-users', colorClass: 'purple' };
+
+        // 5. Wind (E)
+        const WIND_SIGNS = {
+            id: 'E', label: 'Wind Signs', icon: 'fa-wind', colorClass: 'cyan',
+            intensities: ['Light', 'Moderate', 'Strong', 'Storm'],
+            directions: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+        };
+
+        const CATEGORIES = [SNOW_AMOUNT, SNOW_TYPE, HAZARD_ALERTS, PEOPLE_TRACKS, WIND_SIGNS];
+
+        const AVATARS = [
+            'https://i.pravatar.cc/150?img=68', 'https://i.pravatar.cc/150?img=52',
+            'https://i.pravatar.cc/150?img=12', 'https://i.pravatar.cc/150?img=33'
+        ];
+        const SNOW_IMGS = [
+            'https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=600',
+            'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=600',
+            'https://images.unsplash.com/photo-1548777123-e216912df7d8?w=600'
+        ];
+
+        // ==================== 2. DATA GENERATOR ====================
+        const generateDemoReports = (count) => {
+            const reports = [];
+            // Swisstopo Center (Andermatt area)
+            const baseLat = 46.6; const baseLng = 8.6;
+            const today = Date.now();
+
+            for (let i = 0; i < count; i++) {
+                const daysAgo = Math.floor(Math.random() * 20);
+                const timestamp = today - (daysAgo * 86400000);
+                const dateStr = new Date(timestamp).toLocaleDateString();
+
+                const catKeys = ['A', 'B', 'C', 'D', 'E'];
+                const mainCat = catKeys[Math.floor(Math.random() * catKeys.length)];
+
+                const categories = { A: null, B: null, C: null, D: null, E: null };
+
+                if (mainCat === 'A') {
+                    const opt = SNOW_AMOUNT.options[Math.floor(Math.random() * SNOW_AMOUNT.options.length)];
+                    categories.A = { value: opt.value, label: opt.label };
+                } else if (mainCat === 'B') {
+                    const opt = SNOW_TYPE.options[Math.floor(Math.random() * SNOW_TYPE.options.length)];
+                    categories.B = { value: opt.value, label: opt.label, depth: Math.floor(Math.random() * 150) + 10 };
+                } else if (mainCat === 'C') {
+                    const opt = HAZARD_ALERTS.options[Math.floor(Math.random() * HAZARD_ALERTS.options.length)];
+                    categories.C = {
+                        type: opt.value, label: opt.label,
+                        size: HAZARD_ALERTS.sizes[Math.floor(Math.random()*HAZARD_ALERTS.sizes.length)],
+                        trigger: HAZARD_ALERTS.triggers[Math.floor(Math.random()*HAZARD_ALERTS.triggers.length)]
+                    };
+                } else if (mainCat === 'D') {
+                    categories.D = Math.floor(Math.random() * 50) + 1;
+                } else if (mainCat === 'E') {
+                    categories.E = {
+                        intensity: WIND_SIGNS.intensities[Math.floor(Math.random()*WIND_SIGNS.intensities.length)],
+                        direction: WIND_SIGNS.directions[Math.floor(Math.random()*WIND_SIGNS.directions.length)]
+                    };
+                }
+
+                reports.push({
+                    id: i,
+                    name: `Report #${i + 100}`,
+                    // Spread points out slightly more for the Swiss map
+                    lat: baseLat + (Math.random() - 0.5) * 0.8,
+                    lng: baseLng + (Math.random() - 0.5) * 1.2,
+                    timestamp,
+                    date: dateStr,
+                    photo: SNOW_IMGS[i % SNOW_IMGS.length],
+                    user: {
+                        name: `User ${i}`,
+                        avatar: AVATARS[i % AVATARS.length],
+                        level: 'Pro Scout'
+                    },
+                    mainCategory: mainCat,
+                    categories: categories
+                });
+            }
+            return reports.sort((a,b) => b.timestamp - a.timestamp);
+        };
+
+        const DEMO_DATA = generateDemoReports(300);
+
+        // ==================== 3. HELPERS ====================
+        const checkDateFilter = (ts, filter) => {
+            const diff = (Date.now() - ts) / (1000 * 3600 * 24);
+            if (filter === DATE_FILTERS.YESTERDAY) return diff <= 1;
+            if (filter === DATE_FILTERS.THIS_WEEK) return diff <= 7;
+            if (filter === DATE_FILTERS.LAST_WEEK) return diff <= 14;
+            return true;
+        };
+
+        // ==================== 4. COMPONENTS ====================
+
+        // --- UPLOAD MODAL ---
+        const UploadModal = ({ onClose, onSubmit }) => {
+            const [cat, setCat] = useState(null);
+            const [photo, setPhoto] = useState(null);
+            const [form, setForm] = useState({
+                typeVal: '', depth: 50, size: 'Small', intensity: 'Moderate', count: 5
+            });
+
+            const handleFile = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setPhoto(ev.target.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleSubmit = () => {
+                if(!cat || !photo) return;
+                const categories = { A: null, B: null, C: null, D: null, E: null };
+
+                if(cat === 'A') {
+                    const label = SNOW_AMOUNT.options.find(o=>o.value === form.typeVal)?.label || 'Good Coverage';
+                    categories.A = { value: form.typeVal, label };
+                }
+                if(cat === 'B') {
+                    const label = SNOW_TYPE.options.find(o=>o.value === form.typeVal)?.label || 'Powder';
+                    categories.B = { value: form.typeVal, label, depth: form.depth };
+                }
+                if(cat === 'C') {
+                    const label = HAZARD_ALERTS.options.find(o=>o.value === form.typeVal)?.label || 'Avalanche';
+                    categories.C = { type: form.typeVal, label, size: form.size, trigger: 'Skier' };
+                }
+                if(cat === 'D') categories.D = parseInt(form.count);
+                if(cat === 'E') categories.E = { intensity: form.intensity, direction: 'N' };
+
+                onSubmit({
+                    mainCategory: cat, categories, photo,
+                    user: { name: 'You', avatar: 'https://i.pravatar.cc/150?img=68', level: 'New' }
+                });
+            };
+
+            return (
+                <div className="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl h-[85vh] flex flex-col overflow-hidden pop-in">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-gray-800">New Report</h3>
+                            <button onClick={onClose}><i className="fas fa-times"></i></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {!photo ? (
+                                <div onClick={()=>document.getElementById('u').click()} className="h-32 bg-gray-50 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition">
+                                    <div className="text-center text-gray-400">
+                                        <i className="fas fa-camera text-2xl mb-2"></i>
+                                        <div className="text-xs font-bold">Upload Photo</div>
+                                    </div>
+                                    <input id="u" type="file" className="hidden" accept="image/*" onChange={handleFile}/>
+                                </div>
+                            ) : (
+                                <img src={photo} className="w-full h-48 object-cover rounded-xl" />
+                            )}
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Category</label>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {CATEGORIES.map(c => (
+                                        <button key={c.id} onClick={()=>setCat(c.id)} className={`flex flex-col items-center p-2 rounded-lg border ${cat===c.id ? `bg-${c.colorClass}-50 border-${c.colorClass}-500 text-${c.colorClass}-700` : 'hover:bg-gray-50'}`}>
+                                            <i className={`fas ${c.icon}`}></i>
+                                            <span className="text-[10px] font-bold mt-1">{c.id}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {cat && (
+                                <div className="space-y-3 bg-gray-50 p-3 rounded-lg">
+                                    {(cat === 'A' || cat === 'B' || cat === 'C') && (
+                                        <select className="w-full p-2 border rounded" onChange={e=>setForm({...form, typeVal: e.target.value})}>
+                                            <option>Select Type...</option>
+                                            {(cat==='A'?SNOW_AMOUNT:cat==='B'?SNOW_TYPE:HAZARD_ALERTS).options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    )}
+                                    {cat === 'B' && (
+                                        <div>
+                                            <label className="text-xs font-bold">Depth: {form.depth}cm</label>
+                                            <input type="range" min="0" max="200" value={form.depth} onChange={e=>setForm({...form, depth: e.target.value})} className="w-full"/>
+                                        </div>
+                                    )}
+                                    {cat === 'C' && (
+                                        <div className="flex gap-2">
+                                            {HAZARD_ALERTS.sizes.map(s => (
+                                                <button key={s} onClick={()=>setForm({...form, size:s})} className={`flex-1 text-xs py-1 border rounded ${form.size===s?'bg-red-600 text-white':'bg-white'}`}>{s}</button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {cat === 'D' && <input type="number" placeholder="Count" className="w-full p-2 border rounded" onChange={e=>setForm({...form, count: e.target.value})}/>}
+                                    {cat === 'E' && (
+                                        <div className="flex gap-2">
+                                            {WIND_SIGNS.intensities.map(i => (
+                                                <button key={i} onClick={()=>setForm({...form, intensity:i})} className={`flex-1 text-xs py-1 border rounded ${form.intensity===i?'bg-cyan-600 text-white':'bg-white'}`}>{i}</button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t"><button onClick={handleSubmit} disabled={!cat || !photo} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Publish</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- FULL SCREEN POPUP (CENTERED) ---
+        const ReportPopup = ({ report, onClose }) => {
+            const mc = report.mainCategory;
+            const c = report.categories;
+            let theme = { color: 'text-gray-600', bg: 'bg-gray-100', icon: 'fa-info' };
+
+            if(mc === 'A') theme = { color: 'text-blue-600', bg: 'bg-blue-50', icon: 'fa-layer-group' };
+            if(mc === 'B') theme = { color: 'text-indigo-600', bg: 'bg-indigo-50', icon: 'fa-snowflake' };
+            if(mc === 'C') theme = { color: 'text-red-600', bg: 'bg-red-50', icon: 'fa-triangle-exclamation' };
+            if(mc === 'D') theme = { color: 'text-purple-600', bg: 'bg-purple-50', icon: 'fa-users' };
+            if(mc === 'E') theme = { color: 'text-cyan-600', bg: 'bg-cyan-50', icon: 'fa-wind' };
+
+            return (
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+                    <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl pop-in relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={onClose} className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 text-white rounded-full hover:bg-black/70 flex items-center justify-center transition"><i className="fas fa-times text-lg"></i></button>
+
+                        <div className="flex flex-col md:flex-row h-[70vh] md:h-[500px]">
+                            <div className="md:w-3/5 h-1/2 md:h-full relative bg-black">
+                                <img src={report.photo} className="w-full h-full object-contain md:object-cover" />
+                                <div className={`absolute bottom-4 left-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 shadow ${theme.color}`}>
+                                    <i className={`fas ${theme.icon} mr-2`}></i> {mc === 'C' ? 'HAZARD' : 'Report'}
+                                </div>
+                            </div>
+
+                            <div className="md:w-2/5 p-6 overflow-y-auto flex flex-col">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">{report.name}</h2>
+                                    <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                                        <i className="far fa-calendar"></i> {report.date}
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 space-y-4">
+                                    {mc === 'A' && (
+                                        <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                            <div className="text-xs text-blue-500 font-bold uppercase">Coverage</div>
+                                            <div className="text-xl font-bold text-blue-900">{c.A.label}</div>
+                                        </div>
+                                    )}
+                                    {mc === 'B' && (
+                                        <div className="space-y-2">
+                                            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                                <div className="text-xs text-indigo-500 font-bold uppercase">Snow Type</div>
+                                                <div className="text-xl font-bold text-indigo-900">{c.B.label}</div>
+                                            </div>
+                                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center">
+                                                <span className="text-gray-600 font-medium">Depth</span>
+                                                <span className="text-2xl font-black text-gray-800">{c.B.depth}<span className="text-sm font-normal text-gray-500">cm</span></span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {mc === 'C' && (
+                                        <div className="space-y-2">
+                                            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                                                <div className="text-xs text-red-500 font-bold uppercase">Hazard Type</div>
+                                                <div className="text-xl font-bold text-red-900">{c.C.label}</div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="p-3 bg-gray-50 rounded-lg text-center">
+                                                    <div className="text-xs text-gray-500">Size</div>
+                                                    <div className="font-bold">{c.C.size}</div>
+                                                </div>
+                                                <div className="p-3 bg-gray-50 rounded-lg text-center">
+                                                    <div className="text-xs text-gray-500">Trigger</div>
+                                                    <div className="font-bold">{c.C.trigger}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {mc === 'D' && (
+                                        <div className="p-6 bg-purple-50 rounded-xl border border-purple-100 text-center">
+                                            <div className="text-4xl font-black text-purple-600">{c.D}</div>
+                                            <div className="text-sm font-bold text-purple-400 uppercase">People Spotted</div>
+                                        </div>
+                                    )}
+                                    {mc === 'E' && (
+                                        <div className="p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+                                            <div className="text-xs text-cyan-600 font-bold uppercase">Wind Condition</div>
+                                            <div className="text-xl font-bold text-cyan-900">{c.E.intensity} from {c.E.direction}</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t flex items-center gap-3">
+                                    <img src={report.user.avatar} className="w-10 h-10 rounded-full border border-gray-200" />
+                                    <div>
+                                        <div className="font-bold text-sm text-gray-800">{report.user.name}</div>
+                                        <div className="text-xs text-gray-500">{report.user.level}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==================== 5. MAIN APP ====================
+
+        function App() {
+            const [reports, setReports] = useState(DEMO_DATA);
+            const [activeCat, setActiveCat] = useState(null);
+            const [timeFilter, setTimeFilter] = useState(DATE_FILTERS.ALL);
+            const [subFilters, setSubFilters] = useState({});
+
+            const [selectedReport, setSelectedReport] = useState(null);
+            const [showUpload, setShowUpload] = useState(false);
+            const [zoom, setZoom] = useState(9); // Default zoom increased slightly for Swiss map
+
+            const mapRef = useRef(null);
+            const mapInstance = useRef(null);
+            const markersRef = useRef([]);
+            const heatLayerRef = useRef(null);
+
+            const filteredReports = useMemo(() => {
+                return reports.filter(r => {
+                    if(!checkDateFilter(r.timestamp, timeFilter)) return false;
+                    if(activeCat && r.mainCategory !== activeCat) return false;
+                    if(activeCat) {
+                        const filterVal = subFilters[activeCat];
+                        if(filterVal) {
+                            if(activeCat === 'A' && r.categories.A.value !== filterVal) return false;
+                            if(activeCat === 'B' && r.categories.B.value !== filterVal) return false;
+                            if(activeCat === 'C' && r.categories.C.type !== filterVal) return false;
+                            if(activeCat === 'E' && r.categories.E.intensity !== filterVal) return false;
+                        }
+                    }
+                    return true;
+                });
+            }, [reports, activeCat, timeFilter, subFilters]);
+
+            const handleNewReport = (data) => {
+                const newR = {
+                    id: Date.now(),
+                    name: 'New Observation',
+                    lat: 46.6, lng: 8.6,
+                    timestamp: Date.now(),
+                    date: 'Just Now',
+                    ...data
+                };
+                setReports([newR, ...reports]);
+                if(mapInstance.current) mapInstance.current.flyTo([46.6, 8.6], 13);
+            };
+
+            // --- MAP INIT (SWISSTOPO EDITION) ---
+            useEffect(() => {
+                if(!mapInstance.current && mapRef.current) {
+                    // Centered on Gotthard / Andermatt
+                    const map = L.map(mapRef.current, { zoomControl: false }).setView([46.6, 8.6], 9);
+
+                    // SWISSTOPO LAYER
+                    // The 'current' keyword automatically fetches the latest map version
+                    // 3857 is Web Mercator (standard for Leaflet)
+                    L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', {
+                        attribution: '&copy; <a href="https://www.swisstopo.admin.ch/">swisstopo</a>',
+                        minZoom: 8,
+                        maxZoom: 19 // Swisstopo allows very deep zoom
+                    }).addTo(map);
+
+                    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+                    map.on('zoomend', () => setZoom(map.getZoom()));
+                    map.on('click', () => setSelectedReport(null));
+
+                    mapInstance.current = map;
+                }
+            }, []);
+
+            // Map Rendering Logic (Markers vs Heatmap)
+            useEffect(() => {
+                if(!mapInstance.current) return;
+                const map = mapInstance.current;
+
+                markersRef.current.forEach(m => m.remove());
+                markersRef.current = [];
+                if(heatLayerRef.current) {
+                    try{ heatLayerRef.current.remove(); }catch(e){}
+                    heatLayerRef.current = null;
+                }
+
+                if(filteredReports.length > 50 && zoom < 10) {
+                    const points = filteredReports.map(r => [r.lat, r.lng, 0.6]);
+                    heatLayerRef.current = L.heatLayer(points, { radius: 25, blur: 15, maxZoom: 10 }).addTo(map);
+                } else {
+                    filteredReports.forEach(r => {
+                        const mc = r.mainCategory;
+                        let color='#888', icon='fa-circle';
+                        if(mc==='A'){color='#3b82f6'; icon='fa-layer-group';}
+                        if(mc==='B'){color='#6366f1'; icon='fa-snowflake';}
+                        if(mc==='C'){color='#ef4444'; icon='fa-triangle-exclamation';}
+                        if(mc==='D'){color='#a855f7'; icon='fa-users';}
+                        if(mc==='E'){color='#06b6d4'; icon='fa-wind';}
+
+                        const isPhoto = zoom >= 13; // Adjusted slightly for Swisstopo scale
+                        const html = isPhoto ?
+                            `<div class="photo-marker" style="border-color:${color}"><img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;"></div>` :
+                            `<div class="icon-marker" style="background:${color}"><i class="fas ${icon}"></i></div>`;
+
+                        const m = L.marker([r.lat, r.lng], {
+                            icon: L.divIcon({ className: 'custom', html, iconSize: isPhoto?[50,50]:[32,32], iconAnchor: isPhoto?[25,25]:[16,16] })
+                        }).addTo(map);
+
+                        m.on('click', (e) => {
+                            L.DomEvent.stopPropagation(e);
+                            setSelectedReport(r);
+                            map.flyTo([r.lat, r.lng], 14);
+                        });
+                        markersRef.current.push(m);
+                    });
+                }
+
+                // No invalidateSize timeout needed usually, but good for safety
+                setTimeout(() => map.invalidateSize(), 200);
+
+            }, [filteredReports, zoom]);
+
+            return (
+                <div className="h-screen flex flex-col">
+                    <div className="h-16 bg-white border-b shadow-sm z-30 flex items-center justify-between px-4 shrink-0">
+                        <div className="font-black text-gray-800 flex items-center gap-2">
+                            <i className="fas fa-snowflake text-blue-600"></i> SnowMapper <span className="text-[10px] bg-red-600 text-white px-1 rounded ml-1">CH</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                             <select className="bg-gray-100 text-xs font-bold py-2 px-3 rounded-full outline-none"
+                                value={timeFilter} onChange={e=>setTimeFilter(e.target.value)}>
+                                <option value={DATE_FILTERS.ALL}>All Time</option>
+                                <option value={DATE_FILTERS.THIS_WEEK}>7 Days</option>
+                                <option value={DATE_FILTERS.YESTERDAY}>24h</option>
+                             </select>
+                             <button onClick={() => setShowUpload(true)} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700">
+                                <i className="fas fa-plus mr-1"></i> Report
+                             </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border-b p-2 flex gap-2 overflow-x-auto shrink-0 z-20">
+                        <button onClick={()=>{setActiveCat(null); setSubFilters({});}} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${!activeCat ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}>All</button>
+                        {CATEGORIES.map(c => (
+                            <button key={c.id} onClick={()=>{setActiveCat(activeCat===c.id?null:c.id); setSubFilters({});}} className={`px-4 py-1.5 rounded-full text-xs font-bold border flex items-center gap-2 whitespace-nowrap transition ${activeCat===c.id ? `bg-${c.colorClass}-50 text-${c.colorClass}-700 border-${c.colorClass}-500` : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                                <i className={`fas ${c.icon}`}></i> {c.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {activeCat && activeCat !== 'D' && (
+                        <div className="bg-gray-50 p-2 flex gap-2 overflow-x-auto border-b z-20 shrink-0 pop-in">
+                            {(activeCat==='A'?SNOW_AMOUNT:activeCat==='B'?SNOW_TYPE:activeCat==='C'?HAZARD_ALERTS:WIND_SIGNS).options.map(o => (
+                                <button key={o.value} onClick={()=>setSubFilters({...subFilters, [activeCat]: subFilters[activeCat]===o.value?null:o.value})}
+                                    className={`px-3 py-1 rounded text-[10px] font-bold border transition whitespace-nowrap ${subFilters[activeCat]===o.value ? 'bg-gray-800 text-white' : 'bg-white text-gray-500'}`}>
+                                    {o.label}
+                                </button>
+                            ))}
+                            {activeCat === 'E' && WIND_SIGNS.intensities.map(i => (
+                                <button key={i} onClick={()=>setSubFilters({...subFilters, [activeCat]: subFilters[activeCat]===i?null:i})} className={`px-3 py-1 rounded text-[10px] font-bold border transition ${subFilters[activeCat]===i?'bg-cyan-600 text-white':'bg-white'}`}>{i}</button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex-1 flex overflow-hidden relative">
+                        <div className="flex-1 bg-gray-200 relative">
+                             <div ref={mapRef} style={{ width: '100%', height: '100%' }}></div>
+                             <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold shadow z-[500]">
+                                Zoom: {zoom} {zoom<10 && filteredReports.length>50 ? '(Heatmap)' : ''}
+                             </div>
+                        </div>
+
+                        <div className="hidden lg:block w-80 bg-white border-l shadow-xl z-10 flex flex-col">
+                            <div className="p-3 bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase">Results ({filteredReports.length})</div>
+                            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                                {filteredReports.map(r => (
+                                    <div key={r.id} onClick={()=>{setSelectedReport(r); mapInstance.current.flyTo([r.lat,r.lng],14)}} className="flex gap-3 p-2 border rounded-lg hover:shadow-md cursor-pointer transition">
+                                        <img src={r.photo} className="w-16 h-16 object-cover rounded bg-gray-100" />
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-sm truncate">{r.name}</div>
+                                            <div className="text-xs text-gray-500">{r.date}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {selectedReport && <ReportPopup report={selectedReport} onClose={()=>setSelectedReport(null)} />}
+                    {showUpload && <UploadModal onClose={()=>setShowUpload(false)} onSubmit={handleNewReport} />}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
